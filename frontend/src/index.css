@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme{
+
+  --color-canvas-light-blue: #0474B5;
+  --color-canvas-dark-blue: #2A3B5B;
+}
+
+:root {
+  font-family: "Lato", system-ui, sans-serif;
+}
+
+body {
+  font-family: inherit;
+}
