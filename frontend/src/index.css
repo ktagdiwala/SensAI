@@ -4,6 +4,8 @@
 
   --color-canvas-light-blue: #0474B5;
   --color-canvas-dark-blue: #2A3B5B;
+  --color-canvas-gray: #C1C1C1;
+  --color-canvas-outline: #AAAAAA;
 }
 
 :root {
