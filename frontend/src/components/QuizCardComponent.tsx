@@ -51,7 +51,7 @@ export default function QuestionCard({
                 <div className="mx-4 md:mx-16 my-8 border border-canvas-outline border-1.5 p-4 bg-white shadow">
                     
                     {/**Header */}
-                    <div className="flex justify-between items-center bg-gray-100  -mx-4 -mt-4 px-4 py-2">
+                    <div className="flex justify-between items-center bg-gray-100 -mx-4 -mt-4 px-4 py-2 border-b border-canvas-outline">
                         <h2 className="m-0 text-lg font-semibold">Question {data.id} </h2>
                         
                         <div className="flex gap-x-3">
@@ -68,7 +68,7 @@ export default function QuestionCard({
                     </div>
 
                     {/**Description */}
-                    <p className="mt-0 text-gray-800">{data.description}</p>
+                    <p className="mt-4 text-gray-800">{data.description}</p>
 
                     {/**Options */}
                     <div className="border-t border-gray-200 mt-4">
