@@ -53,15 +53,18 @@ export default function QuestionCard({
                     {/**Header */}
                     <div className="flex justify-between items-center bg-gray-100  -mx-4 -mt-4 px-4 py-2">
                         <h2 className="m-0 text-lg font-semibold">Question {data.id} </h2>
-                        <img
-                            src="/message-square.svg"
-                            alt="Open chat"
-                            style={{ cursor: "pointer", width: 24, height: 24, verticalAlign: "middle" }}
-                            onClick={() => setIsChatOpen((v) => !v)}
-                        />
-                        {data.points != null && (
-                            <div className="text-sm text-gray-500">{data.points} pts</div>
-                        )}
+                        
+                        <div className="flex gap-x-3">
+                            <img
+                                src="/message-square.svg"
+                                alt="Open chat"
+                                style={{ cursor: "pointer", width: 24, height: 24, verticalAlign: "middle" }}
+                                onClick={() => setIsChatOpen((v) => !v)}
+                            />
+                            {data.points != null && (
+                                <div className="text-sm text-gray-700 font-bold">{data.points} pts</div>
+                            )}
+                        </div>
                     </div>
 
                     {/**Description */}
@@ -90,12 +93,12 @@ export default function QuestionCard({
                         ))}
                     </div>
 
-                    {/**Options*/}
+                    {/**Submit*/}
                     <div className="text-center mt-6">
                         <button
                             onClick={onCheckAnswer}
                             disabled={!selected || disabled}
-                            className={`px-6 py-3 rounded-lg font-semibold text-white ${
+                            className={`px-6 py-3 rounded-sm font-semibold text-white ${
                                 !selected || disabled
                                     ? "bg-gray-400 cursor-not-allowed"
                                     : "bg-canvas-dark-blue hover:bg-canvas-gray cursor-pointer"
@@ -117,7 +120,7 @@ export default function QuestionCard({
                     )}
                 </div>
             </div>
-            
+
             {/* Chat Component (shown on the right) */}
             {isChatOpen && (
                 <div className="ml-6 w-100">

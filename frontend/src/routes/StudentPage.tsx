@@ -23,7 +23,7 @@ async function mockValidate({
     choiceId: string;
 }): Promise<AnswerFeedback> {
     // pretend the correct answer for q1 is "True"
-    const correct = questionId === "q1" ? choiceId === "T" : false;
+    const correct = questionId === "1" ? choiceId === "T" : false;
     return {
         correct,
         explanation: correct ? "Nice job!" : "Review the lecture notes for this topic.",
