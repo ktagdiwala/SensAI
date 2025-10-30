@@ -3,18 +3,64 @@
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
 
 // Example True/False question
-const q1: QuestionData = {
-    id: "1",
-    description: "This is some sample text, pretend this is a question that is asking truth or false value.",
-    choices: [
-        { id: "T", label: "True" },
-        { id: "F", label: "False" },
-    ],
-    points: 1,
+const questions: QuestionData[] = [
+    {
+        id: "1",
+        description: "The sky is blue during a clear day.",
+        choices: [
+            { id: "T", label: "True" },
+            { id: "F", label: "False" },
+        ],
+        points: 1,
+    },
+    {
+        id: "2",
+        description: "2 + 2 equals 5.",
+        choices: [
+            { id: "T", label: "True" },
+            { id: "F", label: "False" },
+        ],
+        points: 1,
+    },
+    {
+        id: "3",
+        description: "Water boils at 100°C at sea level.",
+        choices: [
+            { id: "T", label: "True" },
+            { id: "F", label: "False" },
+        ],
+        points: 1,
+    },
+    {
+        id: "4",
+        description: "The capital of France is Berlin.",
+        choices: [
+            { id: "T", label: "True" },
+            { id: "F", label: "False" },
+        ],
+        points: 1,
+    },
+    {
+        id: "5",
+        description: "Cats are mammals.",
+        choices: [
+            { id: "T", label: "True" },
+            { id: "F", label: "False" },
+        ],
+        points: 1,
+    },
+];
+
+//REMOVE THIS AFTER IMPLEMENTING VALIDATION FUNCTION IN BACKEND
+// DEV-ONLY mock
+const correctAnswers: Record<string, string> = {
+    "1": "T", // The sky is blue during a clear day.
+    "2": "F", // 2 + 2 equals 5.
+    "3": "T", // Water boils at 100°C at sea level.
+    "4": "F", // The capital of France is Berlin.
+    "5": "T", // Cats are mammals.
 };
 
-
-// DEV-ONLY mock (don’t ship answers to client in production)
 async function mockValidate({
     questionId,
     choiceId,
@@ -22,8 +68,7 @@ async function mockValidate({
     questionId: string;
     choiceId: string;
 }): Promise<AnswerFeedback> {
-    // pretend the correct answer for q1 is "True"
-    const correct = questionId === "1" ? choiceId === "T" : false;
+    const correct = correctAnswers[questionId] === choiceId;
     return {
         correct,
         explanation: correct ? "Nice job!" : "Review the lecture notes for this topic.",
@@ -33,11 +78,9 @@ async function mockValidate({
 export default function StudentPage() {
     return (
         <div>
-            <QuestionCard data={q1} validate={mockValidate} />
-            <QuestionCard data={q1} validate={mockValidate} />
-            <QuestionCard data={q1} validate={mockValidate} />
-            <QuestionCard data={q1} validate={mockValidate} />
-            <QuestionCard data={q1} validate={mockValidate} />
+            {questions.map((q) => (
+                <QuestionCard key={q.id} data={q} validate={mockValidate} />
+            ))}
         </div>
     )
 }
