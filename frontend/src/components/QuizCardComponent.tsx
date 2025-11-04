@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ChatComponent from "../components/ChatComponent"; 
 
 export type Choice = { id: string; label: string };
@@ -16,31 +16,47 @@ export type AnswerFeedback = {
 
 type QuestionCardProps = {
     data: QuestionData;
-    validate: (args: { questionId: string; choiceId: string }) => Promise<AnswerFeedback>;
+    validate: (args: { questionId: string; choiceId: string; studentId?: string }) => Promise<AnswerFeedback>;
     lockAfterSubmit?: boolean;
+    selected?: string | null;
+    onSelect?: (choiceId: string) => void;
+    studentId?: string;
 };
 
 export default function QuestionCard({
     data,
     validate,
     lockAfterSubmit = false,
+    selected: selectedProp = null,
+    onSelect,
+    studentId,
 }: QuestionCardProps) {
-    const [selected, setSelected] = useState<string | null>(null);
+    const [selected, setSelected] = useState<string | null>(selectedProp);
     const [submitting, setSubmitting] = useState(false);
     const [feedback, setFeedback] = useState<AnswerFeedback | null>(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
 
     const disabled = submitting || (lockAfterSubmit && !!feedback);
 
+    useEffect(() => {
+        setSelected(selectedProp ?? null);
+    }, [selectedProp]);
+
     async function onCheckAnswer() {
         if (!selected) return;
         setSubmitting(true);
         try {
-            const res = await validate({ questionId: data.id, choiceId: selected });
+            const res = await validate({ questionId: data.id, choiceId: selected, studentId });
             setFeedback(res);
         } finally {
             setSubmitting(false);
         }
+    }
+
+    function handleSelect(choiceId: string) {
+        if (disabled) return;
+        setSelected(choiceId);
+        onSelect?.(choiceId);
     }
 
     return (
@@ -85,7 +101,7 @@ export default function QuestionCard({
                                     value={c.id}
                                     disabled={disabled}
                                     checked={selected === c.id}
-                                    onChange={() => setSelected(c.id)}
+                                    onChange={() => handleSelect(c.id)}
                                     className="mr-2 accent-blue-600"
                                 />
                                 {c.label}

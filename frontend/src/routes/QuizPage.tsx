@@ -1,6 +1,7 @@
 // Parent component (e.g., a page or a quiz container)
 // For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
+import { useState } from "react";
 
 // Example True/False question
 const questions: QuestionData[] = [
@@ -64,9 +65,11 @@ const correctAnswers: Record<string, string> = {
 async function mockValidate({
     questionId,
     choiceId,
+    studentId,
 }: {
     questionId: string;
     choiceId: string;
+    studentId?: string;
 }): Promise<AnswerFeedback> {
     const correct = correctAnswers[questionId] === choiceId;
     return {
@@ -75,13 +78,58 @@ async function mockValidate({
     };
 }
 
-
 export default function QuizPage() {
+    const [answers, setAnswers] = useState<Record<string, string>>({});
+    const quizId = "abc123"; // TODO: get from route params
+    const studentId = "student-42"; // TODO: get from auth/user context
+
+    async function submitQuiz() {
+        if (!confirm("Are you sure you want to submit this quiz?")) return;
+
+        const payload = questions.map((q) => ({
+            questionId: q.id,
+            answer: answers[q.id] ?? "null",
+        }));
+
+        try {
+            const res = await fetch(`/api/quiz/${encodeURIComponent(quizId)}/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    studentId,          
+                    answers: payload,
+                }),
+            });
+            if (!res.ok) throw new Error("Submission failed");
+            alert("Quiz submitted.");
+        } catch (err) {
+            console.error(err);
+            alert("Could not submit quiz.");
+        }
+    }
+
     return (
         <div>
             {questions.map((q) => (
-                <QuestionCard key={q.id} data={q} validate={mockValidate} />
+                <QuestionCard
+                    key={q.id}
+                    data={q}
+                    validate={mockValidate}
+                    selected={answers[q.id] ?? null}
+                    onSelect={(choiceId) =>
+                        setAnswers((prev) => ({ ...prev, [q.id]: choiceId }))
+                    }
+                    studentId={studentId}
+                    lockAfterSubmit={true}
+                />
             ))}
+
+            <button
+                className="bg bg-canvas-light-blue text-white m-8 p-4 rounded-md"
+                onClick={submitQuiz}
+            >
+                Submit Quiz
+            </button>
         </div>
     );
 }
