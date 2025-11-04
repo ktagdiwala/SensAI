@@ -7,46 +7,52 @@ import { useState } from "react";
 const questions: QuestionData[] = [
     {
         id: "1",
-        description: "The sky is blue during a clear day.",
+        description: "Which planet is commonly referred to as the Red Planet?",
         choices: [
-            { id: "T", label: "True" },
-            { id: "F", label: "False" },
+            { id: "A", label: "Earth" },
+            { id: "B", label: "Mars" },
+            { id: "C", label: "Venus" },
+            { id: "D", label: "Jupiter" },
         ],
         points: 1,
     },
     {
         id: "2",
-        description: "2 + 2 equals 5.",
+        description: "What is the derivative of x² with respect to x?",
         choices: [
-            { id: "T", label: "True" },
-            { id: "F", label: "False" },
+            { id: "A", label: "x" },
+            { id: "B", label: "2x" },
+            { id: "C", label: "x²" },
+            { id: "D", label: "2" },
         ],
         points: 1,
     },
     {
         id: "3",
-        description: "Water boils at 100°C at sea level.",
+        description: "Which gas do plants primarily absorb during photosynthesis?",
         choices: [
-            { id: "T", label: "True" },
-            { id: "F", label: "False" },
+            { id: "A", label: "Oxygen" },
+            { id: "B", label: "Nitrogen" },
+            { id: "C", label: "Carbon Dioxide" },
+            { id: "D", label: "Hydrogen" },
         ],
         points: 1,
     },
     {
         id: "4",
-        description: "The capital of France is Berlin.",
+        description: "True or False: The Pacific Ocean is the largest ocean on Earth.",
         choices: [
-            { id: "T", label: "True" },
-            { id: "F", label: "False" },
+            { id: "A", label: "True" },
+            { id: "B", label: "False" },
         ],
         points: 1,
     },
     {
         id: "5",
-        description: "Cats are mammals.",
+        description: "True or False: Sound travels faster in air than in water.",
         choices: [
-            { id: "T", label: "True" },
-            { id: "F", label: "False" },
+            { id: "A", label: "True" },
+            { id: "B", label: "False" },
         ],
         points: 1,
     },
@@ -55,11 +61,11 @@ const questions: QuestionData[] = [
 //REMOVE THIS AFTER IMPLEMENTING VALIDATION FUNCTION IN BACKEND
 // DEV-ONLY mock
 const correctAnswers: Record<string, string> = {
-    "1": "T", // The sky is blue during a clear day.
-    "2": "F", // 2 + 2 equals 5.
-    "3": "T", // Water boils at 100°C at sea level.
-    "4": "F", // The capital of France is Berlin.
-    "5": "T", // Cats are mammals.
+    "1": "B", // Mars is known as the Red Planet.
+    "2": "B", // d/dx (x²) = 2x.
+    "3": "C", // Plants absorb CO₂.
+    "4": "A", // Pacific Ocean is the largest.
+    "5": "B", // Sound travels faster in water than in air.
 };
 
 async function mockValidate({
