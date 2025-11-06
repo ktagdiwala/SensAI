@@ -53,7 +53,7 @@ export default function ChatComponent({ onClose }: ChatComponentProps) {
             <div className="flex justify-end pr-6 lg:pr-12 mt-4">
 
                 {/**Header */}
-                <div className="flex h-[540px] w-full max-w-md flex-col rounded-3xl bg-chat-beige shadow-xl">
+                <div className="flex h-[540px] w-full max-w-md flex-col rounded-3xl bg-ai-blue-light shadow-xl">
                     <div className="flex items-center justify-between gap-4 px-6 py-4">
                        
                         <div className="flex items-center gap-2">

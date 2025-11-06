@@ -20,25 +20,25 @@ export default function Home() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <button
-                    className="rounded-lg bg-slate-800 px-8 py-3 text-white font-semibold shadow hover:bg-slate-900 transition"
+                    className="rounded-lg bg-slate-800 px-8 py-3 text-white font-semibold shadow hover:bg-slate-400 transition"
                     onClick={() => openSignIn("instructor")}
                 >
                     Instructor Sign in
                 </button>
                 <button
-                    className="rounded-lg bg-slate-800 px-8 py-3 text-white font-semibold shadow hover:bg-slate-900 transition"
+                    className="rounded-lg bg-slate-800 px-8 py-3 text-white font-semibold shadow hover:bg-slate-400 transition"
                     onClick={() => openSignIn("student")}
                 >
                     Student Sign in
                 </button>
                 <button
-                    className="rounded-lg bg-amber-600 px-8 py-3 text-white font-semibold shadow hover:bg-amber-700 transition"
+                    className="rounded-lg bg-ai-blue-dark px-8 py-3 text-white font-semibold shadow hover:bg-blue-500 transition"
                     onClick={() => openSignUp("instructor")}
                 >
                     Instructor Sign Up
                 </button>
                 <button
-                    className="rounded-lg bg-amber-600 px-8 py-3 text-white font-semibold shadow hover:bg-amber-700 transition"
+                    className="rounded-lg bg-ai-blue-dark px-8 py-3 text-white font-semibold shadow hover:bg-blue-500 transition"
                     onClick={() => openSignUp("student")}
                 >
                     Student Sign Up

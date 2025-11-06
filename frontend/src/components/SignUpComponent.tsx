@@ -137,7 +137,7 @@ export default function SignUp({ signUpType, onClose }: SignUpProps) {
                     <button
                         type="submit"
                         disabled={isSubmitting}
-                        className="w-3/4 rounded-full bg-canvas-orange py-2 text-white font-semibold transition hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-3/4 rounded-full bg-canvas-light-blue py-2 text-white font-semibold transition hover:bg-blue-600 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? "Signing up..." : "Sign up"}
                     </button>
