@@ -29,11 +29,11 @@ export default function InstructorPage() {
                             >
                                 <span className="text-base font-medium text-slate-800">{quiz}</span>
                                 <div className="flex items-center gap-4 text-sm font-medium">
-                                    <button className="flex items-center gap-2 ">
+                                    <button className="flex items-center gap-2 cursor-pointer">
                                         <img src={EditIcon} alt="Edit" className="h-4 w-4" />
                                         Edit
                                     </button>
-                                    <button className="flex items-center gap-2">
+                                    <button className="flex items-center gap-2 cursor-pointer">
                                         <img src={TrashIcon} alt="Delete" className="h-4 w-4" />
                                         Delete
                                     </button>
