@@ -12,7 +12,7 @@ export default function InstructorPage() {
             <header className="flex justify-center">
                 <Link
                     to="/quiz-create"
-                    className="inline-flex items-center justify-center rounded-md bg bg-canvas-light-blue px-8 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-[var(--color-blue-600,#01539a)] focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
+                    className="inline-flex items-center justify-center rounded-md bg bg-canvas-light-blue px-8 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-(--color-blue-600,#01539a) focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
                 >
                     Create Quiz
                 </Link>
@@ -29,11 +29,11 @@ export default function InstructorPage() {
                             >
                                 <span className="text-base font-medium text-slate-800">{quiz}</span>
                                 <div className="flex items-center gap-4 text-sm font-medium">
-                                    <button className="flex items-center gap-2 text-blue-600 transition hover:text-blue-700">
+                                    <button className="flex items-center gap-2 ">
                                         <img src={EditIcon} alt="Edit" className="h-4 w-4" />
                                         Edit
                                     </button>
-                                    <button className="flex items-center gap-2 text-red-600 transition hover:text-red-700">
+                                    <button className="flex items-center gap-2">
                                         <img src={TrashIcon} alt="Delete" className="h-4 w-4" />
                                         Delete
                                     </button>
