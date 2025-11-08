@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme{
+
+  --color-canvas-light-blue: #0474B5;
+  --color-canvas-dark-blue: #2A3B5B;
+  --color-canvas-gray: #C1C1C1;
+  --color-canvas-outline: #AAAAAA;
+  --color-canvas-orange: #BF5734;
+  --color-chat-beige: #E2D5BB;
+  --color-ai-blue-light: #F6FFFF;
+  --color-ai-blue: #C3E4EB;
+  --color-ai-blue-dark: #3A9EBC;
+  
+}
+
+:root {
+  font-family: "Lato", system-ui, sans-serif;
+  color: black;
+}
+
+body {
+  font-family: inherit;
+}
