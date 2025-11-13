@@ -13,7 +13,7 @@ export default function Nav() {
     <nav className="flex gap-10 text-black m-5">
       <div className="flex items-center gap-3">
         <img src={MainIcon} alt="Main icon" className="w-12 h-12" />
-        <h1 className="flex px-3 py-2 text-black text-lg">Sens Ai</h1>
+        <h1 className="flex px-3 py-2 text-black text-lg">SensAI</h1>
       </div>
       <NavLink to="/" className={linkClass}>Home</NavLink>
       <NavLink to="/instructors" className={linkClass}>Instructors</NavLink>

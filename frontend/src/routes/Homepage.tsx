@@ -3,15 +3,15 @@ import SignUp from "../components/SignUpComponent";
 import SignIn from "../components/SignInComponent";
 
 type AuthState =
-    | { mode: "signIn"; role: "instructor" | "student" }
-    | { mode: "signUp"; role: "instructor" | "student" }
+    | { mode: "signIn"; role: "Instructor" | "Student" }
+    | { mode: "signUp"; role: "Instructor" | "Student" }
     | null;
 
 export default function Home() {
     const [activeAuth, setActiveAuth] = useState<AuthState>(null);
 
-    const openSignIn = (role: "instructor" | "student") => setActiveAuth({ mode: "signIn", role });
-    const openSignUp = (role: "instructor" | "student") => setActiveAuth({ mode: "signUp", role });
+    const openSignIn = (role: "Instructor" | "Student") => setActiveAuth({ mode: "signIn", role });
+    const openSignUp = (role: "Instructor" | "Student") => setActiveAuth({ mode: "signUp", role });
     const closeModal = () => setActiveAuth(null);
 
     return (
@@ -21,25 +21,25 @@ export default function Home() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <button
                     className="rounded-lg bg-slate-800 px-8 py-3 text-white font-semibold shadow hover:bg-slate-400 transition"
-                    onClick={() => openSignIn("instructor")}
+                    onClick={() => openSignIn("Instructor")}
                 >
                     Instructor Sign in
                 </button>
                 <button
                     className="rounded-lg bg-slate-800 px-8 py-3 text-white font-semibold shadow hover:bg-slate-400 transition"
-                    onClick={() => openSignIn("student")}
+                    onClick={() => openSignIn("Student")}
                 >
                     Student Sign in
                 </button>
                 <button
                     className="rounded-lg bg-ai-blue-dark px-8 py-3 text-white font-semibold shadow hover:bg-blue-500 transition"
-                    onClick={() => openSignUp("instructor")}
+                    onClick={() => openSignUp("Instructor")}
                 >
                     Instructor Sign Up
                 </button>
                 <button
                     className="rounded-lg bg-ai-blue-dark px-8 py-3 text-white font-semibold shadow hover:bg-blue-500 transition"
-                    onClick={() => openSignUp("student")}
+                    onClick={() => openSignUp("Student")}
                 >
                     Student Sign Up
                 </button>
