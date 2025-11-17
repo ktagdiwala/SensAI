@@ -1,56 +1,65 @@
-require('dotenv').config();
 const express = require('express');
+const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser');
+const dotenv = require('dotenv'); // To load variables from .env file
+
+// Load environment variables (Make sure .env file exists)
+dotenv.config();
+
+// Import database connection (initializes DB connection)
+const { testDatabaseConnection } = require('./config/dbConnection');
+
+// Import routes
+const authRoutes = require('./routes/authRoutes');
+const registerRoutes = require('./routes/registerRoutes');
+
 const app = express();
-const PORT = process.env.PORT || 3000;
-app.use(express.urlencoded({extended:true}));
-const mysql = require('mysql2/promise');
+const PORT = process.env.PORT || 3001;
 
-const dbhost = process.env.DB_HOST || "localhost";
-const dbuser = process.env.DB_USER;
-const dbpass = process.env.DB_PASS;
+// ==================
+// Global Middleware
+// ==================
 
-// Setting up database connection pool
-const pool = mysql.createPool({
-  host: dbhost,
-  user: dbuser,
-  password: dbpass,
-  database: "sensai",
-  connectionLimit: 10,
-  waitForConnections: true,
+// CORS Middleware (Allows for connection to the React frontend)
+app.use((req, res, next) => {
+	// Set headers to allow all origins * (TODO: This will be restricted later in production)
+	res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
+	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+	res.header('Access-Control-Allow-Credentials', 'true');
+	if (req.method === 'OPTIONS') {
+		res.header('Access-Control-Allow-Methods', 'POST, GET');
+		return res.status(200).json({});
+	}
+	next();
 });
-let conn = null;
 
-// IIFE (Immediately invoked function expression) to handle asynchronous setup tasks
-(async () => {
-  try {
-    conn = await pool.getConnection();
-    console.log("Database connection established.");
-    // Release the connection back to the pool after the check
-    conn.release(); 
-  } catch (error) {
-    console.error("Error connecting to the database:", error.message);
-    // Exit the process if the initial connection fails
-    process.exit(1); 
-  }
+// Cookie Parser Middleware (To parse cookies from requests)
+app.use(cookieParser());
 
-  // Start server after database connection setup
-  app.listen(PORT, () => {
-    console.log('Server is running on port ' + PORT)
-  });
-})();
+// Body Parser Middleware (To parse JSON requests)
+app.use(bodyParser.json());
 
-app.get("/dbTest", async(req, res) => {
-    let sql = "SELECT CURDATE()";
-    const [rows] = await conn.query(sql);
-    res.send(rows);
-});//dbTest
+// === Route Mounting ===
 
+// Mount the authRoutes module. All routes in authRoutes.js
+// will be prefixed with '/api' (e.g., /api/login)
+app.use('/api', authRoutes);
+app.use('/api', registerRoutes);
+
+// === Start the Server ===
+app.listen(PORT, () => {
+	console.log(`Database Service API running on http://localhost:${PORT}`);
+});
 
 app.get('/', (req, res) => {
-    res.send('This is the SensAI backend.');
+	res.send('This is the SensAI backend.');
 })
 
-app.listen(PORT, () => {
-    console.log('Server is running on port ' + PORT)
-})
-
+app.get("/dbTest", async (req, res) => {
+	try {
+		const rows = await testDatabaseConnection();
+		res.send(rows);
+	} catch (error) {
+		res.status(500).send({ error: error.message });
+	}
+});//dbTest
