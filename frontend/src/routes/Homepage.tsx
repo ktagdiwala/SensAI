@@ -16,7 +16,7 @@ export default function Home() {
 
     return (
         <section className="relative min-h-screen flex flex-col items-center justify-center space-y-10 bg-white">
-            <h1 className="text-3xl font-semibold text-slate-900">Welcome to the home page</h1>
+            <h1 className="text-3xl font-semibold text-slate-900">Welcome</h1>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <button
