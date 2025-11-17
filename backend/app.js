@@ -1,4 +1,5 @@
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv'); // To load variables from .env file
 
@@ -22,8 +23,9 @@ const PORT = process.env.PORT || 3001;
 // CORS Middleware (Allows for connection to the React frontend)
 app.use((req, res, next) => {
 	// Set headers to allow all origins * (TODO: This will be restricted later in production)
-	res.header('Access-Control-Allow-Origin', '*');
+	res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
 	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+	res.header('Access-Control-Allow-Credentials', 'true');
 	if (req.method === 'OPTIONS') {
 		res.header('Access-Control-Allow-Methods', 'POST, GET');
 		return res.status(200).json({});
@@ -31,12 +33,15 @@ app.use((req, res, next) => {
 	next();
 });
 
+// Cookie Parser Middleware (To parse cookies from requests)
+app.use(cookieParser());
+
 // Body Parser Middleware (To parse JSON requests)
 app.use(bodyParser.json());
 
 // === Route Mounting ===
 
-// 3. Mount the authRoutes module. All routes in authRoutes.js
+// Mount the authRoutes module. All routes in authRoutes.js
 // will be prefixed with '/api' (e.g., /api/login)
 app.use('/api', authRoutes);
 app.use('/api', registerRoutes);

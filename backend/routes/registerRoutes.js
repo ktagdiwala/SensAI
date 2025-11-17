@@ -58,9 +58,9 @@ router.post('/register', async (req, res) => {
 		}
 
         // Insert the new user into the database
-        const insertQuery = 'INSERT INTO user (name, email, password, roleId) VALUES (?, ?, ?, ?)';
+        const sql = 'INSERT INTO user (name, email, password, roleId) VALUES (?, ?, ?, ?)';
 
-		const [result] = await pool.query(insertQuery, [name, email, passwordHash, roleId]);
+		const [result] = await pool.query(sql, [name, email, passwordHash, roleId]);
 
         // Success Response
 		console.log("User registered successfully: ", email);

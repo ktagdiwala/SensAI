@@ -42,6 +42,7 @@ export default function SignIn({ signInType, onClose }: SignInProps) {
             setIsSubmitting(true);
             const response = await fetch(SIGNIN_ENDPOINT, {
                 method: "POST",
+				credentials: 'include',
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -60,9 +61,8 @@ export default function SignIn({ signInType, onClose }: SignInProps) {
             const data = await response.json();
             setSuccessMessage("Login successful! Redirecting...");
             
-            // Store token, userId, and userRole, then redirect after 2 seconds
+            // Store userId, and userRole, then redirect after 2 seconds
             setTimeout(() => {
-                localStorage.setItem('token', data.token);
                 localStorage.setItem('userId', data.userId);
                 localStorage.setItem('userRole', data.userRole);
                 setFormData({

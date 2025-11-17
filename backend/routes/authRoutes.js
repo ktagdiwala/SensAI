@@ -1,13 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../config/dbConnection'); // Import the DB connection
+const { pool } = require('../config/dbConnection'); // Import the DB connection
 const bcrypt = require('bcrypt'); // For password verification
-const jwt = require('jsonwebtoken'); // For token generation
 require('dotenv').config(); // Load environment variables
-const session = require('express-session');
-
-// Load secret key from environment variable (sing dotenv)
-const SECRET_KEY = process.env.JWT_SECRET;
+const {createSession, deleteSession} = require('../utils/sessionUtils')
+const {verifySession} = require('../middleware/sessionMiddleware');
 
 // === Business Logic Functions ===
 
@@ -37,24 +34,6 @@ function roleRedirect(roleName){
 	}
 }
 
-// TODO: Session management for specific page access
-// /** verifySession
-//  * Middleware to verify if a user is logged in via session.
-//  * @param {string} directPath - The path to continue to if session is valid.
-//  * @return 
-//  */
-// function verifySession(directPath){
-// 	return (req,res,next) =>{
-// 		if(req.session && req.session.userId){
-// 			// Session is valid, proceed to directPath
-// 			return res.redirect(directPath);
-// 		}else{
-// 			// No valid session, redirect to login
-// 			return res.redirect('/login');
-// 		}
-// 	}
-// }
-
 // === Route Definition ===
 
 // POST /login (Path accessed as /api/login)
@@ -69,7 +48,7 @@ router.post('/login', async (req, res) => {
         // Find the user in the database
         const query = 'SELECT userId, email, password, user.roleId, role.name AS roleName FROM user JOIN role ON user.roleId = role.roleId WHERE email = ? ';
 
-		const [rows] = await db.pool.query(query, [email]);
+		const [rows] = await pool.query(query, [email]);
 		if(rows.length === 0){
             return res.status(401).json({ message: 'User not found.' });
         }
@@ -82,21 +61,22 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials.' });
         }
 
-        // Generate a JSON Web Token (JWT)
-        const token = jwt.sign(
-            { userId: user.userId, email: user.email },
-            SECRET_KEY,
-            // { expiresIn: '1h' }
-        );
+        // Generate a session for the user
+		const sessionId = await createSession(user.userId);
+		if(!sessionId){
+			return res.status(500).json({ message: 'Error creating user session.' });
+		}
 
 		console.log("User logged in successfully: ", email);
 		const url = roleRedirect(user.roleName);
 		console.log("Redirecting to: ", url);
 
+		// Browser stores sessionId as a cookie so it is sent with future requests
+		res.cookie('sessionId', sessionId, {httpOnly: true, secure: false, sameSite: 'lax'});
+
         // Success Response
         return res.status(200).json({
             message: 'Login successful',
-            token: token,
             userId: user.userId,
 			userRole: user.roleName,
 			redirectUrl: url
@@ -106,6 +86,29 @@ router.post('/login', async (req, res) => {
         console.error('Server error during login:', error);
         return res.status(500).json({ message: 'Internal server error.' });
     }
+});
+
+router.post('/logout', async (req, res) => {
+	const {sessionId} = req.cookies;
+	if (!sessionId){
+		return res.status(400).json({message: 'No active session'});
+	}
+	await deleteSession(sessionId);
+	res.clearCookie('sessionId');
+	return res.status(200).json({message: "Logout successful."});
+});
+
+// GET /me (Path accessed as /api/me)
+// Public endpoint to check if user is authenticated (can be used by the frontend)
+// TODO: Use verifySession from sessionMiddleware.js for routes that should only be accessible to authenticated users
+router.get('/me', verifySession, (req, res) => {
+	// If we reach here, the middleware validated the session
+	// req.session will have {sessionId, userId, createdAt, expiresAt}
+	return res.status(200).json({
+		userId: req.session.userId,
+		createdAt: req.session.createdAt,
+		expiresAt: req.session.expiresAt
+	});
 });
 
 // Export the router
