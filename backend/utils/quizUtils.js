@@ -102,7 +102,7 @@ async function getAllQuizzes(){
  * @param {int} courseId
 */
 async function getAllQuizzesForCourse(courseId){
-	const sql = 'SELECT quizId, quiz.title AS quizTitle, accessCode, course.title AS courseTitle FROM quiz JOIN course ON quiz.courseId = course.courseId WHERE courseId = ?';
+	const sql = 'SELECT quizId, quiz.title AS quizTitle, accessCode, course.title AS courseTitle FROM quiz JOIN course ON quiz.courseId = course.courseId WHERE course.courseId = ?';
 	try{
 		const[result] = await pool.query(sql, [courseId]);
 		return result;
