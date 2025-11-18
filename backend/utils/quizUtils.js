@@ -1,5 +1,5 @@
 const { pool } = require('../config/dbConnection'); // Import the DB connection
-const { faker } = require('@faker-js/faker'); // For generating random access code
+const { faker } = require('@faker-js/faker'); // https://fakerjs.dev/api/string.html
 
 /** generateAccessCode
  * Generate a unique access code for a quiz
@@ -17,24 +17,28 @@ function generateAccessCode(){
  */
 async function createQuiz(title, accessCode, prompt, courseId){
 	// If no access code provided, generate one
-	if(!accessCode){
+	if (!accessCode) {
 		accessCode = generateAccessCode();
 	}
-	let sql = 'INSERT INTO quiz (title, accessCode, prompt, courseId) VALUES (?, ?, ?, ?)';
-	if(!prompt){
+	let sql, params;
+	if (!prompt && !accessCode) {
+		sql = 'INSERT INTO quiz (title, courseId) VALUES (?, ?)';
+		params = [title, courseId];
+	} else if (!prompt) {
 		sql = 'INSERT INTO quiz (title, accessCode, courseId) VALUES (?, ?, ?)';
+		params = [title, accessCode, courseId];
+	} else if (!accessCode) {
+		sql = 'INSERT INTO quiz (title, prompt, courseId) VALUES (?, ?, ?)';
+		params = [title, prompt, courseId];
+	} else {
+		sql = 'INSERT INTO quiz (title, accessCode, prompt, courseId) VALUES (?, ?, ?, ?)';
+		params = [title, accessCode, prompt, courseId];
 	}
 
 	try {
-		if(!prompt){
-			const [result] = await pool.query(sql, [title, accessCode, courseId]);
-			// returns the new record's quizId
-			return result.insertId;
-		}
-
-		const [result] = await pool.query(sql, [title, accessCode, prompt, courseId]);
-		// returns the new record's quizId
-		return result.insertId;
+		const [result] = await pool.query(sql, params);
+		// returns the new quiz record
+		return getQuizById(result.insertId);
 
 	} catch (error) {
 		console.error("Error inserting quiz: ", error);

@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS quiz (
   quizId INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(100) NOT NULL,
   accessCode VARCHAR(45) NOT NULL,
-  prompt TEXT NOT NULL,
+  prompt TEXT,
   courseId INT NOT NULL,
   UNIQUE KEY uk_quiz_accessCode (accessCode),
   CONSTRAINT fk_quiz_course
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS question (
   title TEXT NOT NULL,
   correctAns VARCHAR(100) NOT NULL,  
   otherAns TEXT NOT NULL,
-  prompt TEXT NOT NULL,
+  prompt TEXT,
   courseId INT NOT NULL,
   CONSTRAINT fk_question_course
     FOREIGN KEY (courseId) REFERENCES course(courseId)

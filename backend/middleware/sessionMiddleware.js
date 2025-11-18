@@ -1,5 +1,12 @@
 const {validateSession} = require('../utils/sessionUtils')
 
+
+/** verifySession
+ * Verifies that a valid session exists for the incoming request
+ * @param {*} req
+ * @param {*} res
+ * @param {*} next
+ */
 async function verifySession(req, res, next){
 	// Get sessionId from cookies
 	const {sessionId} = req.cookies;
@@ -20,4 +27,25 @@ async function verifySession(req, res, next){
 	}
 }
 
-module.exports = {verifySession};
+// Uses verifySession to confirm user is logged in, additionally checks if user is instructor
+async function verifySessionInstructor(req, res, next){
+	verifySession(req, res, () => {
+		if(req.session.userRole === 'Instructor'){
+			next();
+		}else{
+			return res.status(403).json({message: 'Forbidden: Instructor access required.'});
+		}
+	});
+}
+
+async function verifySessionStudent(req, res, next){
+	verifySession(req, res, () => {
+		if(req.session.userRole === 'Student'){
+			next();
+		}else{
+			return res.status(403).json({message: 'Forbidden: Student access required.'});
+		}
+	});
+}
+
+module.exports = {verifySession, verifySessionInstructor, verifySessionStudent};
