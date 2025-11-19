@@ -21,21 +21,40 @@ export default function StudentPage() {
         setError(null);
 
         try {
-            const response = await fetch("/api/quizzes/validate", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ quizId: quizId.trim(), quizPassword }),
-            });
+            const trimmedQuizId = quizId.trim();
+            const trimmedPassword = quizPassword.trim();
 
-            if (!response.ok) {
-                const { message } = await response.json();
-                throw new Error(message ?? "Unable to join quiz.");
+            // Ensure credentials (cookies) are sent with the request
+            const response = await fetch(
+                `http://localhost:3000/api/quiz/${encodeURIComponent(trimmedQuizId)}/${encodeURIComponent(trimmedPassword)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'include' 
+                }
+            );
+
+            // Check content type to avoid JSON parsing errors on HTML responses (like 404 pages)
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Received non-JSON response from server. Please check your API URL.");
             }
 
-            navigate(`/quiz/${encodeURIComponent(quizId.trim())}`);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data?.message ?? "Quiz not found or access code invalid.");
+            }
+
+            if (!data?.quiz) {
+                throw new Error("Quiz data is missing from response.");
+            }
+
+            navigate(`/quiz/${encodeURIComponent(trimmedQuizId)}`);
         } catch (err) {
+            console.error("Quiz fetch error:", err);
             setError(err instanceof Error ? err.message : "Unexpected error.");
         } finally {
             setIsSubmitting(false);

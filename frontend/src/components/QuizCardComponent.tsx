@@ -137,7 +137,7 @@ export default function QuestionCard({
                 </div>
             </div>
 
-            {/* Chat Component (shown on the right) */}
+
             <div
                 className={`ml-6 w-100 ${isChatOpen ? "" : "hidden"}`}
                 aria-hidden={!isChatOpen}
