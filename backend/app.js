@@ -13,6 +13,7 @@ const { testDatabaseConnection } = require('./config/dbConnection');
 const authRoutes = require('./routes/authRoutes');
 const registerRoutes = require('./routes/registerRoutes');
 const quizRoutes = require('./routes/quizRoutes');
+const questionRoutes = require('./routes/questionRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,6 +48,7 @@ app.use(bodyParser.json());
 app.use('/api', authRoutes);
 app.use('/api', registerRoutes);
 app.use('/api/quiz', quizRoutes);
+app.use('/api/question', questionRoutes);
 
 // === Start the Server ===
 app.listen(PORT, () => {

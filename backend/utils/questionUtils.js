@@ -29,8 +29,8 @@ async function createQuestion(title, correctAns, otherAns, prompt, courseId){
 
 	try {
 		const [result] = await pool.query(sql, params);
-		// returns the new question record
-		return getQuestionById(result.insertId);
+		// returns the new question id
+		return result.insertId;
 
 	} catch (error) {
 		console.error("Error inserting question: ", error);
@@ -87,11 +87,12 @@ async function getQuestionsByCourseId(courseId){
  * @param {string} correctAns
  * @param {string} otherAns
  * @param {string} prompt
+ * @param {int} courseId
  */
-async function updateQuestion(questionId, title, correctAns, otherAns, prompt){
-	let sql = 'UPDATE question SET title = COALESCE(?, title), correctAns = COALESCE(?, correctAns), otherAns = COALESCE(?, otherAns), prompt = COALESCE(?, prompt) WHERE questionId = ?';
+async function updateQuestion(questionId, title, correctAns, otherAns, prompt, courseId){
+	let sql = 'UPDATE question SET title = COALESCE(?, title), correctAns = COALESCE(?, correctAns), otherAns = COALESCE(?, otherAns), prompt = COALESCE(?, prompt), courseId = COALESCE(?, courseId) WHERE questionId = ?';
 	try{
-		const [result] = await pool.query(sql, [title, correctAns, otherAns, prompt, questionId]);
+		const [result] = await pool.query(sql, [title, correctAns, otherAns, prompt, courseId, questionId]);
 		return result;
 	}catch (error) {
 		console.error("Error updating question: ", error);
