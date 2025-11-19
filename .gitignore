@@ -1,5 +1,4 @@
 /backend/node_modules
 /frontend/node_modules
-SensAI_Schema_Script.sql
 .env
 SensAI_Insert_Statements.sql
