@@ -138,11 +138,12 @@ export default function QuestionCard({
             </div>
 
             {/* Chat Component (shown on the right) */}
-            {isChatOpen && (
-                <div className="ml-6 w-100">
-                    <ChatComponent onClose={() => setIsChatOpen(false)} />
-                </div>
-            )}
+            <div
+                className={`ml-6 w-100 ${isChatOpen ? "" : "hidden"}`}
+                aria-hidden={!isChatOpen}
+            >
+                <ChatComponent onClose={() => setIsChatOpen(false)} />
+            </div>
         </div>
     );
 }
