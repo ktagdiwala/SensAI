@@ -35,7 +35,7 @@ async function createSession(userId){
  * @return 
  */
 async function validateSession(sessionId){
-	const sql = 'SELECT * FROM session WHERE sessionId = ? AND expiresAt > NOW()';
+	const sql = 'SELECT session.*, user.userId, role.name as userRole FROM session JOIN user ON session.userId = user.userId JOIN role ON user.roleId = role.roleId WHERE sessionId = ? AND expiresAt > NOW()';
 
 	try{
 		const [result] = await pool.query(sql, [sessionId]);
