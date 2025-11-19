@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {verifySession, verifySessionInstructor, verifySessionStudent} = require('../middleware/sessionMiddleware');
-const {createQuestion, getQuestionById, getQuestionsByCourseId, getQuestionsByQuizId, updateQuestion, deleteQuestion} = require('../utils/questionUtils');
+const {createQuestion, getQuestionById, getQuestionsByCourseId, getQuestionsByQuizId, getQuestionsByQuizIdAndAccessCode, updateQuestion, deleteQuestion, addQuestionToQuiz, removeQuestionFromQuiz} = require('../utils/questionUtils');
 
 // GET /:questionId
 router.get('/:questionId', verifySessionInstructor, (req, res) => {
@@ -18,14 +18,29 @@ router.get('/:questionId', verifySessionInstructor, (req, res) => {
 })
 
 // GET /quiz/:quizId
-// Accessible to both instructors and students
-router.get('/quiz/:quizId', verifySession, (req, res) => {
+// Gets questions for a particular quiz (instructor only)
+router.get('/quiz/:quizId', verifySessionInstructor, (req, res) => {
 	const {quizId} = req.params;
 	getQuestionsByQuizId(quizId).then((questions) => {
 		if(questions){
 			return res.status(200).json({questions});
 		}else{
 			return res.status(404).json({message: 'Questions not found in this quiz.'});
+		}
+	}).catch((error) => {
+		return res.status(500).json({message: 'Error retrieving quiz questions.'});
+	})
+})
+
+// GET /quiz/:quizId/accessCode/:accessCode
+// Gets questions for a particular quiz with accessCode (student access)
+router.get('/quiz/:quizId/accessCode/:accessCode', verifySessionStudent, (req, res) => {
+	const {quizId, accessCode} = req.params;
+	getQuestionsByQuizIdAndAccessCode(quizId, accessCode).then((questions) => {
+		if(questions){
+			return res.status(200).json({questions});
+		}else{
+			return res.status(404).json({message: 'Questions not found in this quiz or incorrect access code.'});
 		}
 	}).catch((error) => {
 		return res.status(500).json({message: 'Error retrieving quiz questions.'});
@@ -90,6 +105,58 @@ router.delete('/delete/:questionId', verifySessionInstructor, (req, res) => {
 		}else{
 			return res.status(500).json({message: 'Error deleting question.'});
 		}
+	})
+})
+
+// POST /addToQuiz
+// Add a question to a quiz (for instructor)
+router.post('/addToQuiz', verifySessionInstructor, (req, res) => {
+	const {quizId, questionId} = req.body;
+
+	if(!quizId || !questionId){
+		return res.status(400).json({message: 'quizId and questionId are required'});
+	}
+
+	addQuestionToQuiz(quizId, questionId).then((result) => {
+		if(result?.error === 'invalid_params'){
+			return res.status(400).json({message: result.message});
+		}
+		if(result?.error === 'duplicate'){
+			return res.status(409).json({message: result.message});
+		}
+		if(result?.error === 'notfound'){
+			return res.status(404).json({message: result.message});
+		}
+		if(result && result.affectedRows > 0) {
+			return res.status(201).json({message: 'Question added to quiz successfully.'});
+		}
+		return res.status(500).json({message: 'Error adding question to quiz.'});
+	}).catch((error) => {
+		return res.status(500).json({message: 'Server error'});
+	})
+})
+
+// DELETE /removeFromQuiz
+// Remove a question from a quiz (for instructor)
+router.delete('/removeFromQuiz', verifySessionInstructor, (req, res) => {
+	const {quizId, questionId} = req.body;
+
+	if(!quizId || !questionId){
+		return res.status(400).json({message: 'quizId and questionId are required'});
+	}
+
+	removeQuestionFromQuiz(quizId, questionId).then((result) => {
+		if(result?.error === 'invalid_params'){
+			return res.status(400).json({message: result.message});
+		}
+		if(result && result.affectedRows > 0) {
+			return res.status(200).json({message: 'Question removed from quiz successfully.'});
+		}else if(result?.affectedRows === 0){
+			return res.status(404).json({message: 'Question not found in quiz.'});
+		}
+		return res.status(500).json({message: 'Error removing question from quiz.'});
+	}).catch((error) => {
+		return res.status(500).json({message: 'Server error'});
 	})
 })
 
