@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import EditIcon from '../assets/Edit.svg';
 import TrashIcon from '../assets/Trash.svg';
@@ -14,6 +14,7 @@ interface Quiz {
 export default function InstructorPage() {
 
     const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+    const navigate = useNavigate();
 
     const URL = "http://localhost:3000/api/quiz"
     useEffect(() => {
@@ -46,6 +47,27 @@ export default function InstructorPage() {
         fetchQuizzes();
     }, []);
 
+    const handleDelete = async (quizId: number) => {
+        const confirmed = window.confirm('Delete this quiz? This cannot be undone.');
+        if (!confirmed) return;
+
+        try {
+            const response = await fetch(`http://localhost:3000/api/quiz/delete/${quizId}`, {
+                method: 'DELETE',
+                credentials: 'include',
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed with status ${response.status}`);
+            }
+
+            setQuizzes((prev) => prev.filter((quiz) => quiz.quizId !== quizId));
+        } catch (error) {
+            console.error('Error deleting quiz:', error);
+            alert('Unable to delete quiz right now.');
+        }
+    };
+
     return (
         <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-10 px-6 py-12">
             <header className="flex justify-center">
@@ -75,11 +97,19 @@ export default function InstructorPage() {
                                         {quiz.quizTitle}
                                     </span>
                                     <div className="flex items-center gap-4 text-sm font-medium">
-                                        <button className="flex items-center gap-2 cursor-pointer">
+                                        <button
+                                            type="button"
+                                            className="flex items-center gap-2 cursor-pointer"
+                                            onClick={() => navigate(`/quiz-create/${quiz.quizId}`)}
+                                        >
                                             <img src={EditIcon} alt="Edit" className="h-4 w-4" />
                                             Edit
                                         </button>
-                                        <button className="flex items-center gap-2 cursor-pointer">
+                                        <button
+                                            type="button"
+                                            className="flex items-center gap-2 cursor-pointer"
+                                            onClick={() => handleDelete(quiz.quizId)}
+                                        >
                                             <img src={TrashIcon} alt="Delete" className="h-4 w-4" />
                                             Delete
                                         </button>

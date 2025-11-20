@@ -46,6 +46,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/quiz-create/:quizId"
+          element={
+            <RoleRoute allowedRole="Instructor">
+              <QuizCreatePage />
+            </RoleRoute>
+          }
+        />
+        <Route
           path="/students"
           element={
             <RoleRoute allowedRole="Student">

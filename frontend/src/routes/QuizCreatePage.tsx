@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import QuizCardInstructor, {
   type InstructorQuestion,
 } from "../components/QuizCardInstructorComponent";
@@ -10,60 +11,20 @@ const tabs = [
   { id: "questions", label: "Questions" },
 ];
 
-const mockQuestions: InstructorQuestion[] = [
-  {
-    id: 1,
-    title: "Question 1",
-    description:
-      "This is some sample text, pretend this is a question that is asking truth or false value.",
-    points: 1,
-    choices: [
-      { id: "true", label: "True" },
-      { id: "false", label: "False" },
-    ],
-    type: "true_false",
-    correctChoiceId: "true",
-  },
-  {
-    id: 2,
-    title: "Question 2",
-    description:
-      "Which component is responsible for performing arithmetic and logic operations in a computer?",
-    points: 2,
-    choices: [
-      { id: "alu", label: "Arithmetic Logic Unit" },
-      { id: "gpu", label: "Graphics Processing Unit" },
-      { id: "ssd", label: "Solid State Drive" },
-      { id: "ram", label: "Random Access Memory" },
-    ],
-    type: "multiple_choice",
-    correctChoiceId: "alu",
-  },
-  {
-    id: 3,
-    title: "Question 3",
-    description:
-      "When writing CSS, which selector targets an element with the id of “app-container”?",
-    points: 1,
-    choices: [
-      { id: "class", label: ".app-container" },
-      { id: "id", label: "#app-container" },
-      { id: "tag", label: "<app-container>" },
-    ],
-    type: "multiple_choice",
-    correctChoiceId: "id",
-  },
-];
-
 export default function QuizCreatePage() {
+  const { quizId } = useParams<{ quizId?: string }>();
   const [activeTab, setActiveTab] = useState<"details" | "questions">("details");
   const [quizName, setQuizName] = useState("");
   const [instructions, setInstructions] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [accessCode, setAccessCode] = useState("");
+  const [courseId, setCourseId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [questions, setQuestions] = useState<InstructorQuestion[]>(mockQuestions);
+  const [questions, setQuestions] = useState<InstructorQuestion[]>([]);
   const [isQuestionModalOpen, setQuestionModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<InstructorQuestion | null>(null);
+  const [isLoadingQuestions, setLoadingQuestions] = useState(false);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -81,17 +42,32 @@ export default function QuizCreatePage() {
     setIsSaving(true);
 
     try {
-      const payload = {
-        quiz: {
-          name: quizName.trim(),
-          instructions: instructions.trim(),
-          systemPrompt: systemPrompt.trim(),
-        },
-        questions,
+      const body = {
+        title: quizName.trim(),
+        prompt: systemPrompt.trim(),
+        accessCode: accessCode.trim(),
+        courseId: Number(courseId),
       };
 
-      console.log("Quiz payload preview", payload);
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const endpoint = quizId
+        ? `http://localhost:3000/api/quiz/update/${quizId}`
+        : "http://localhost:3000/api/quiz/create";
+      const method = quizId ? "PUT" : "POST";
+
+      const response = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Save failed with status ${response.status}`);
+      }
+
+      // TODO: persist questions via dedicated endpoint once available
+    } catch (error) {
+      console.error(error);
     } finally {
       setIsSaving(false);
     }
@@ -100,6 +76,57 @@ export default function QuizCreatePage() {
   function handleDeleteQuestion(id: number) {
     setQuestions((prev) => prev.filter((question) => question.id !== id));
   }
+
+  useEffect(() => {
+    if (!quizId) {
+      setQuestions([]);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingQuestions(true);
+    setQuestionsError(null);
+
+    (async () => {
+      try {
+        const response = await fetch(`http://localhost:3000/api/quiz/id/${quizId}`, {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!isMounted) return;
+
+        const quiz = data.quiz ?? {};
+        setQuizName(quiz.title ?? "");
+        setInstructions(quiz.instructions ?? "");
+        setSystemPrompt(quiz.prompt ?? "");
+        setAccessCode(quiz.accessCode ?? "");
+        setCourseId(quiz.courseId ? String(quiz.courseId) : "");
+        const fetchedQuestions: InstructorQuestion[] = quiz.questions ?? [];
+        setQuestions(
+          fetchedQuestions.map((question, index) => ({
+            ...question,
+            id: question.id ?? index + 1,
+          }))
+        );
+      } catch {
+        if (!isMounted) return;
+        setQuestionsError("Unable to load quiz questions.");
+      } finally {
+        if (isMounted) {
+          setLoadingQuestions(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [quizId]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -167,6 +194,36 @@ export default function QuizCreatePage() {
               />
             </div>
 
+            <div>
+              <label htmlFor="access-code" className="text-sm font-semibold text-gray-700">
+                Access Code
+              </label>
+              <input
+                id="access-code"
+                type="text"
+                placeholder="Enter access code"
+                value={accessCode}
+                onChange={(event) => setAccessCode(event.target.value)}
+                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+              />
+            </div>
+
+            
+            {/**TODO make this searchable for a course in the backend */}
+            <div>
+              <label htmlFor="course-id" className="text-sm font-semibold text-gray-700">
+                Course ID
+              </label>
+              <input
+                id="course-id"
+                type="number"
+                value={courseId}
+                onChange={(event) => setCourseId(event.target.value)}
+                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                required
+              />
+            </div>
+
             <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
@@ -185,17 +242,29 @@ export default function QuizCreatePage() {
           </form>
         ) : (
           <div className="space-y-10">
-            {questions.map((question) => (
-              <QuizCardInstructor
-                key={question.id}
-                question={question}
-                onDelete={handleDeleteQuestion}
-                onEdit={(selected) => {
-                  setEditingQuestion(selected);
-                  setQuestionModalOpen(true);
-                }}
-              />
-            ))}
+            {questionsError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {questionsError}
+              </div>
+            )}
+
+            {isLoadingQuestions ? (
+              <div className="text-center text-sm text-gray-500">Loading questions...</div>
+            ) : (
+              <>
+                {questions.map((question) => (
+                  <QuizCardInstructor
+                    key={question.id}
+                    question={question}
+                    onDelete={handleDeleteQuestion}
+                    onEdit={(selected) => {
+                      setEditingQuestion(selected);
+                      setQuestionModalOpen(true);
+                    }}
+                  />
+                ))}
+              </>
+            )}
 
             <div className="flex justify-center gap-4 pt-2">
               <button
