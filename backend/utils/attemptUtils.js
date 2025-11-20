@@ -82,8 +82,7 @@ async function recordQuestionAttempt(userId, questionId, quizId, givenAnswer, nu
 	}
 	return {
 		success: true,
-		recordedCount: questionArray.length,
-		totalCount: questionArray.length,
+		totalQuestions: questionArray.length,
 		score: score
 	}
 }
