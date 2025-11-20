@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import QuizCardInstructor, {
   type InstructorQuestion,
 } from "../components/QuizCardInstructorComponent";
@@ -13,6 +13,7 @@ const tabs = [
 
 export default function QuizCreatePage() {
   const { quizId } = useParams<{ quizId?: string }>();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"details" | "questions">("details");
   const [quizName, setQuizName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -39,32 +40,29 @@ export default function QuizCreatePage() {
   async function handleSaveQuiz(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
-
     try {
       const body = {
         title: quizName.trim(),
         prompt: systemPrompt.trim(),
         accessCode: accessCode.trim(),
-        courseId: Number(courseId),
+        courseId: courseId ? Number(courseId) : null,
       };
-
       const endpoint = quizId
         ? `http://localhost:3000/api/quiz/update/${quizId}`
         : "http://localhost:3000/api/quiz/create";
       const method = quizId ? "PUT" : "POST";
-
       const response = await fetch(endpoint, {
         method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(body),
       });
-
       if (!response.ok) {
         throw new Error(`Save failed with status ${response.status}`);
       }
 
       // TODO: persist questions via dedicated endpoint once available
+      navigate("/instructors");
     } catch (error) {
       console.error(error);
     } finally {
