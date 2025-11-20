@@ -15,7 +15,6 @@ export default function QuizCreatePage() {
   const { quizId } = useParams<{ quizId?: string }>();
   const [activeTab, setActiveTab] = useState<"details" | "questions">("details");
   const [quizName, setQuizName] = useState("");
-  const [instructions, setInstructions] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [courseId, setCourseId] = useState("");
@@ -102,7 +101,6 @@ export default function QuizCreatePage() {
 
         const quiz = data.quiz ?? {};
         setQuizName(quiz.title ?? "");
-        setInstructions(quiz.instructions ?? "");
         setSystemPrompt(quiz.prompt ?? "");
         setAccessCode(quiz.accessCode ?? "");
         setCourseId(quiz.courseId ? String(quiz.courseId) : "");
@@ -166,19 +164,6 @@ export default function QuizCreatePage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="quiz-instructions" className="text-sm font-semibold text-gray-700">
-                Quiz Instructions
-              </label>
-              <textarea
-                id="quiz-instructions"
-                rows={6}
-                placeholder="Enter instructions"
-                value={instructions}
-                onChange={(event) => setInstructions(event.target.value)}
-                className="mt-2 w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-              />
-            </div>
 
             <div>
               <label htmlFor="system-prompt" className="text-sm font-semibold text-gray-700">
