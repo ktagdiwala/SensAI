@@ -2,7 +2,18 @@ const express = require('express');
 const { pool } = require('../config/dbConnection'); // Import DB connection
 const router = express.Router();
 const {verifySession, verifySessionInstructor, verifySessionStudent} = require('../middleware/sessionMiddleware');
-const {createQuiz, getQuizById, getQuizByIdAndAccessCode, getAllQuizzes, getAllQuizzesForCourse, updateQuiz, deleteQuiz} = require('../utils/quizUtils');
+const {createQuiz, getQuizById, getQuizByIdAndAccessCode, getAllQuizzes, getAllQuizzesForCourse, updateQuiz, deleteQuiz, getAllCourses} = require('../utils/quizUtils');
+
+// GET /courses
+// Get all available courses (for instructors)
+router.get('/courses', verifySessionInstructor, async (req, res) => {
+	try{
+		const courses = await getAllCourses();
+		return res.status(200).json({courses});
+	}catch(error){
+		return res.status(500).json({message: 'Error retrieving courses.'});
+	}
+})
 
 // GET /course/:courseId
 // Get all quizzes for a specific course (for instructors)

@@ -2,3 +2,4 @@
 /frontend/node_modules
 .env
 SensAI_Insert_Statements.sql
+testEndpoints.js
