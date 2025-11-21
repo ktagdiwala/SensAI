@@ -149,6 +149,20 @@ async function deleteQuiz(quizId){
 	}
 }
 
+/** getAllCourses
+ * Retrieves all courses available in the system
+ */
+async function getAllCourses(){
+	const sql = 'SELECT courseId, title FROM course ORDER BY title ASC';
+	try{
+		const[result] = await pool.query(sql);
+		return result;
+	} catch (error) {
+		console.error("Error retrieving courses: ", error);
+		return [];
+	}
+}
+
 
 module.exports = {
 	createQuiz,
@@ -157,5 +171,6 @@ module.exports = {
 	getAllQuizzes,
 	getAllQuizzesForCourse,
 	updateQuiz,
-	deleteQuiz
+	deleteQuiz,
+	getAllCourses
 }

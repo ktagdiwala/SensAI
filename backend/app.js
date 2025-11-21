@@ -13,6 +13,8 @@ const { testDatabaseConnection } = require('./config/dbConnection');
 const authRoutes = require('./routes/authRoutes');
 const registerRoutes = require('./routes/registerRoutes');
 const quizRoutes = require('./routes/quizRoutes');
+const questionRoutes = require('./routes/questionRoutes');
+const attemptRoutes = require('./routes/attemptRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,7 +30,7 @@ app.use((req, res, next) => {
 	res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
 	res.header('Access-Control-Allow-Credentials', 'true');
 	if (req.method === 'OPTIONS') {
-		res.header('Access-Control-Allow-Methods', 'POST, GET');
+		res.header('Access-Control-Allow-Methods', 'POST, GET, PUT, DELETE');
 		return res.status(200).json({});
 	}
 	next();
@@ -47,6 +49,8 @@ app.use(bodyParser.json());
 app.use('/api', authRoutes);
 app.use('/api', registerRoutes);
 app.use('/api/quiz', quizRoutes);
+app.use('/api/question', questionRoutes);
+app.use('/api/attempt', attemptRoutes);
 
 // === Start the Server ===
 app.listen(PORT, () => {
