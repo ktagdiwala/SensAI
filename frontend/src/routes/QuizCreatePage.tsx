@@ -6,6 +6,110 @@ import QuizCardInstructor, {
 import QuizQuestionInstructor from "../components/QuizQuestionComponentInstructor";
 import SearchIcon from "../assets/Search.svg";
 
+const createChoiceId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `choice-${Math.random().toString(36).slice(2, 10)}`;
+
+const extractQuestionId = (raw: any): number | null => {
+  const candidateKeys = ["questionId", "question_id", "QuestionID", "questionID", "id"];
+  for (const key of candidateKeys) {
+    if (raw?.[key] != null) {
+      const numeric = Number(raw[key]);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        return numeric;
+      }
+    }
+  }
+  return null;
+};
+
+const normalizeOtherAnswers = (otherAns: unknown): string[] => {
+  if (Array.isArray(otherAns)) {
+    return otherAns.map((value) => (typeof value === "string" ? value : String(value)));
+  }
+  if (typeof otherAns === "string") {
+    if (!otherAns.trim()) return [];
+    try {
+      const parsed = JSON.parse(otherAns);
+      if (Array.isArray(parsed)) {
+        return parsed.map((value) => (typeof value === "string" ? value : String(value)));
+      }
+    } catch {
+      // ignore parse errors
+    }
+    return otherAns
+      .split("{|}")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
+  }
+  return [];
+};
+
+const inferQuestionType = (choices: string[]): "true_false" | "multiple_choice" => {
+  if (choices.length === 2) {
+    const normalized = choices.map((label) => label.trim().toLowerCase());
+    if (normalized.includes("true") && normalized.includes("false")) {
+      return "true_false";
+    }
+  }
+  return "multiple_choice";
+};
+
+const mapServerQuestion = (raw: any): InstructorQuestion => {
+  const questionId = extractQuestionId(raw);
+  const instructorPrompt =
+    typeof raw?.questionPrompt === "string"
+      ? raw.questionPrompt
+      : typeof raw?.promptContext === "string"
+      ? raw.promptContext
+      : "";
+  const promptText =
+    typeof raw?.prompt === "string" && raw.prompt.trim().length > 0
+      ? raw.prompt
+      : instructorPrompt;
+
+  const normalizedPrompt =
+    typeof promptText === "string" && promptText.trim().length > 0
+      ? promptText
+      : null;
+
+  const otherAnswers = normalizeOtherAnswers(raw?.otherAns);
+  const allChoices = [
+    raw?.correctAns ?? "",
+    ...otherAnswers.filter((label) => label != null),
+  ].map((label) => (label == null ? "" : String(label)));
+
+  const choiceEntries =
+    allChoices.length > 0
+      ? allChoices.map((label) => ({
+          id: createChoiceId(),
+          label,
+        }))
+      : [{ id: createChoiceId(), label: "" }];
+
+  const correctChoiceId = choiceEntries[0].id;
+  const questionType = inferQuestionType(allChoices);
+  const numericPoints = Number(raw?.points);
+  const points = Number.isNaN(numericPoints) ? 1 : numericPoints;
+  const questionText =
+    typeof raw?.title === "string" && raw.title.trim().length > 0
+      ? raw.title
+      : `Question ${raw?.id ?? ""}`.trim();
+
+  return {
+    id: questionId ?? 0,
+    title: questionText,
+    description: questionText,
+    prompt: normalizedPrompt,
+    points,
+    choices: choiceEntries,
+    type: questionType,
+    correctChoiceId,
+    isPersisted: Boolean(questionId),
+  };
+};
+
 const tabs = [
   { id: "details", label: "Details" },
   { id: "questions", label: "Questions" },
@@ -23,6 +127,7 @@ export default function QuizCreatePage() {
   const [questions, setQuestions] = useState<InstructorQuestion[]>([]);
   const [isQuestionModalOpen, setQuestionModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<InstructorQuestion | null>(null);
+  const [modalQuestionNumber, setModalQuestionNumber] = useState<number>(1);
   const [isLoadingQuestions, setLoadingQuestions] = useState(false);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
 
@@ -70,13 +175,72 @@ export default function QuizCreatePage() {
     }
   }
 
-  function handleDeleteQuestion(id: number) {
+  const handleDeleteQuestion = (id: number) => {
+    setQuestionsError(null);
+    const target = questions.find((question) => question.id === id);
+    if (!target) return;
+
+    const questionIdNumber = Number(target.id);
+    if (!Number.isFinite(questionIdNumber) || questionIdNumber <= 0) {
+      setQuestionsError("Cannot remove question: missing identifier.");
+      return;
+    }
+
+    const previous = questions;
     setQuestions((prev) => prev.filter((question) => question.id !== id));
-  }
+
+    if (!quizId || !target.isPersisted) {
+      return;
+    }
+
+    const quizIdNumber = Number(quizId);
+    if (Number.isNaN(quizIdNumber)) {
+      setQuestions(previous);
+      setQuestionsError("Invalid quiz identifier.");
+      return;
+    }
+
+    (async () => {
+      try {
+        const response = await fetch("http://localhost:3000/api/question/removeFromQuiz", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ quizId: quizIdNumber, questionId: questionIdNumber }),
+        });
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => null);
+          throw new Error(
+            errorPayload?.message ?? "Failed to remove question from quiz.",
+          );
+        }
+
+        const deleteResponse = await fetch(
+          `http://localhost:3000/api/question/delete/${questionIdNumber}`,
+          { method: "DELETE", credentials: "include" },
+        );
+
+        if (!deleteResponse.ok) {
+          const errorPayload = await deleteResponse.json().catch(() => null);
+          setQuestionsError(
+            errorPayload?.message ?? "Question detached, but deletion failed.",
+          );
+        }
+      } catch (error) {
+        console.error(error);
+        setQuestionsError(
+          error instanceof Error ? error.message : "Failed to remove question.",
+        );
+        setQuestions(previous);
+      }
+    })();
+  };
 
   useEffect(() => {
     if (!quizId) {
       setQuestions([]);
+      setLoadingQuestions(false);
       return;
     }
 
@@ -102,15 +266,41 @@ export default function QuizCreatePage() {
         setSystemPrompt(quiz.prompt ?? "");
         setAccessCode(quiz.accessCode ?? "");
         setCourseId(quiz.courseId ? String(quiz.courseId) : "");
-        const fetchedQuestions: InstructorQuestion[] = quiz.questions ?? [];
-        setQuestions(
-          fetchedQuestions.map((question, index) => ({
-            ...question,
-            id: question.id ?? index + 1,
-          }))
-        );
-      } catch {
+      } catch (error) {
         if (!isMounted) return;
+        console.error(error);
+      }
+
+      try {
+        const questionResponse = await fetch(
+          `http://localhost:3000/api/question/quiz/${quizId}`,
+          { credentials: "include" },
+        );
+
+        if (!questionResponse.ok) {
+          if (questionResponse.status === 404) {
+            if (isMounted) {
+              setQuestions([]);
+            }
+          } else {
+            const errorPayload = await questionResponse.json().catch(() => null);
+            throw new Error(
+              errorPayload?.message ?? `Failed with status ${questionResponse.status}`,
+            );
+          }
+        } else {
+          const questionData = await questionResponse.json();
+          if (isMounted) {
+            const fetched = Array.isArray(questionData.questions)
+              ? questionData.questions
+              : [];
+            setQuestions(fetched.map(mapServerQuestion));
+          }
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        console.error(error);
+        setQuestions([]);
         setQuestionsError("Unable to load quiz questions.");
       } finally {
         if (isMounted) {
@@ -235,13 +425,16 @@ export default function QuizCreatePage() {
               <div className="text-center text-sm text-gray-500">Loading questions...</div>
             ) : (
               <>
-                {questions.map((question) => (
+                {questions.map((question, index) => (
                   <QuizCardInstructor
                     key={question.id}
                     question={question}
+                    position={index + 1}
                     onDelete={handleDeleteQuestion}
-                    onEdit={(selected) => {
-                      setEditingQuestion(selected);
+                    onEdit={() => {
+                      setQuestionsError(null);
+                      setEditingQuestion(question);
+                      setModalQuestionNumber(index + 1);
                       setQuestionModalOpen(true);
                     }}
                   />
@@ -253,7 +446,9 @@ export default function QuizCreatePage() {
               <button
                 type="button"
                 onClick={() => {
+                  setQuestionsError(null);
                   setEditingQuestion(null);
+                  setModalQuestionNumber(questions.length + 1);
                   setQuestionModalOpen(true);
                 }}
                 className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
@@ -280,18 +475,141 @@ export default function QuizCreatePage() {
           onCancel={() => {
             setQuestionModalOpen(false);
             setEditingQuestion(null);
+            setModalQuestionNumber(questions.length + 1);
           }}
-          onSave={(question) => {
-            setQuestions((previous) => {
-              const exists = previous.some((item) => item.id === question.id);
-              return exists
-                ? previous.map((item) => (item.id === question.id ? question : item))
-                : [...previous, question];
-            });
+          onSave={async (question, { isNew }) => {
+            if (!quizId) {
+              throw new Error("Save quiz details before adding questions.");
+            }
+
+            const quizIdNumber = Number(quizId);
+            if (Number.isNaN(quizIdNumber)) {
+              throw new Error("Invalid quiz identifier.");
+            }
+
+            const courseIdNumber = Number(courseId);
+            if (Number.isNaN(courseIdNumber)) {
+              throw new Error("Course ID is required before saving questions.");
+            }
+
+            const correctChoice = question.choices.find(
+              (choice) => choice.id === question.correctChoiceId,
+            );
+            if (!correctChoice) {
+              throw new Error("Select a correct answer before saving.");
+            }
+
+            const otherAnswers = question.choices
+              .filter((choice) => choice.id !== question.correctChoiceId)
+              .map((choice) => choice.label);
+
+            setQuestionsError(null);
+
+            if (isNew) {
+              const createResponse = await fetch(
+                "http://localhost:3000/api/question/create",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({
+                    title: question.description,
+                    correctAns: correctChoice.label,
+                    otherAns: otherAnswers.join("{|}"),
+                    prompt: question.prompt ?? null,
+                    questionPrompt: question.prompt ?? null,
+                    courseId: courseIdNumber,
+                  }),
+                },
+              );
+
+              if (!createResponse.ok) {
+                const errorBody = await createResponse.json().catch(() => null);
+                throw new Error(errorBody?.message ?? "Unable to create question.");
+              }
+
+              const createData = await createResponse.json();
+              const persistedQuestionId = Number(createData.questionId);
+
+              if (!persistedQuestionId) {
+                throw new Error("Question ID missing from server response.");
+              }
+
+              const addResponse = await fetch(
+                "http://localhost:3000/api/question/addToQuiz",
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({
+                    quizId: quizIdNumber,
+                    questionId: persistedQuestionId,
+                  }),
+                },
+              );
+
+              if (!addResponse.ok) {
+                const errorBody = await addResponse.json().catch(() => null);
+                await fetch(
+                  `http://localhost:3000/api/question/delete/${persistedQuestionId}`,
+                  { method: "DELETE", credentials: "include" },
+                ).catch(() => undefined);
+                throw new Error(
+                  errorBody?.message ?? "Unable to attach question to quiz.",
+                );
+              }
+
+              setQuestions((previous) => [
+                ...previous,
+                {
+                  ...question,
+                  id: persistedQuestionId,
+                  title: question.description,
+                  isPersisted: true,
+                },
+              ]);
+            } else {
+              if (!question.id) {
+                throw new Error("Missing question identifier.");
+              }
+
+              const updateResponse = await fetch(
+                `http://localhost:3000/api/question/update/${question.id}`,
+                {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  credentials: "include",
+                  body: JSON.stringify({
+                    title: question.description,
+                    correctAns: correctChoice.label,
+                    otherAns: otherAnswers.join("{|}"),
+                    prompt: question.prompt ?? null,
+                    questionPrompt: question.prompt ?? null,
+                    courseId: courseIdNumber,
+                  }),
+                },
+              );
+
+              if (!updateResponse.ok) {
+                const errorBody = await updateResponse.json().catch(() => null);
+                throw new Error(errorBody?.message ?? "Unable to update question.");
+              }
+
+              setQuestions((previous) =>
+                previous.map((item) =>
+                  item.id === question.id
+                    ? { ...question, title: question.description, isPersisted: true }
+                    : item,
+                ),
+              );
+            }
+
             setQuestionModalOpen(false);
             setEditingQuestion(null);
             setActiveTab("questions");
+            setModalQuestionNumber(questions.length + 1);
           }}
+          displayNumber={modalQuestionNumber}
         />
       )}
     </div>
