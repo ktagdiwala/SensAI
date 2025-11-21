@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import QuizCardInstructor, {
   type InstructorQuestion,
@@ -115,6 +115,13 @@ const tabs = [
   { id: "questions", label: "Questions" },
 ];
 
+interface CourseOption {
+  id: number;
+  title: string;
+}
+
+const COURSE_LIST_ENDPOINT = "http://localhost:3000/api/quiz/courses";
+
 export default function QuizCreatePage() {
   const { quizId } = useParams<{ quizId?: string }>();
   const navigate = useNavigate();
@@ -130,6 +137,10 @@ export default function QuizCreatePage() {
   const [modalQuestionNumber, setModalQuestionNumber] = useState<number>(1);
   const [isLoadingQuestions, setLoadingQuestions] = useState(false);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [isCoursesLoading, setCoursesLoading] = useState(false);
+  const [courseListError, setCourseListError] = useState<string | null>(null);
+  const [courseSearchTerm, setCourseSearchTerm] = useState("");
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -138,6 +149,21 @@ export default function QuizCreatePage() {
       document.body.style.overflow = "";
     };
   }, [isQuestionModalOpen]);
+
+  const visibleCourses = useMemo(() => {
+    const query = courseSearchTerm.trim().toLowerCase();
+    if (!query) {
+      return courses;
+    }
+    const matches = courses.filter((course) =>
+      course.title.toLowerCase().includes(query),
+    );
+    if (courseId && !matches.some((course) => String(course.id) === courseId)) {
+      const selected = courses.find((course) => String(course.id) === courseId);
+      return selected ? [selected, ...matches] : matches;
+    }
+    return matches;
+  }, [courses, courseSearchTerm, courseId]);
 
   const nextQuestionId =
     (questions.length ? Math.max(...questions.map((question) => question.id)) : 0) + 1;
@@ -314,6 +340,70 @@ export default function QuizCreatePage() {
     };
   }, [quizId]);
 
+  {/**Course search */}
+  useEffect(() => {
+    let isActive = true;
+    setCoursesLoading(true);
+    setCourseListError(null);
+
+    fetch(COURSE_LIST_ENDPOINT, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed with status ${response.status}`);
+        }
+        const payload = await response.json();
+        const potentialList = Array.isArray(payload?.courses)
+          ? payload.courses
+          : [];
+        interface RawCourse {
+          courseId?: number | string;
+          id?: number | string;
+          title?: string;
+          name?: string;
+        }
+
+        interface CourseOption {
+          id: number;
+          title: string;
+        }
+
+        const normalized: CourseOption[] = potentialList
+          .map((raw: RawCourse): CourseOption | null => {
+            const idCandidate: number = Number(raw?.courseId ?? raw?.id);
+            const titleCandidate: string | null =
+              typeof raw?.title === "string"
+          ? raw.title
+          : typeof raw?.name === "string"
+          ? raw.name
+          : null;
+            if (!Number.isFinite(idCandidate) || !titleCandidate) {
+              return null;
+            }
+            return { id: idCandidate, title: titleCandidate };
+          })
+          .filter((item: CourseOption | null): item is CourseOption => item != null);
+        if (isActive) {
+          setCourses(normalized);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error(error);
+        if (isActive) {
+          setCourseListError("Unable to load courses.");
+          setCourses([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setCoursesLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       <nav className="border-b border-gray-200">
@@ -385,16 +475,45 @@ export default function QuizCreatePage() {
             {/**TODO make this searchable for a course in the backend */}
             <div>
               <label htmlFor="course-id" className="text-sm font-semibold text-gray-700">
-                Course ID
+                Course
               </label>
-              <input
-                id="course-id"
-                type="number"
-                value={courseId}
-                onChange={(event) => setCourseId(event.target.value)}
-                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                required
-              />
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Search courses"
+                  value={courseSearchTerm}
+                  onChange={(event) => setCourseSearchTerm(event.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                />
+                <select
+                  id="course-id"
+                  value={courseId}
+                  onChange={(event) => setCourseId(event.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  required
+                  disabled={isCoursesLoading || (!!courseListError && !courses.length)}
+                >
+                  <option value="">Select a course</option>
+                  {visibleCourses.map((course) => (
+                    <option key={course.id} value={String(course.id)}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {isCoursesLoading && (
+                <p className="mt-1 text-xs text-gray-500">Loading courses...</p>
+              )}
+              {courseListError && (
+                <p className="mt-1 text-xs text-red-600">{courseListError}</p>
+              )}
+              {!isCoursesLoading &&
+                !courseListError &&
+                visibleCourses.length === 0 && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    No courses match your search.
+                  </p>
+                )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
@@ -595,8 +714,8 @@ export default function QuizCreatePage() {
                 throw new Error(errorBody?.message ?? "Unable to update question.");
               }
 
-              setQuestions((previous) =>
-                previous.map((item) =>
+              setQuestions((previous: InstructorQuestion[]) =>
+                previous.map((item: InstructorQuestion) =>
                   item.id === question.id
                     ? { ...question, title: question.description, isPersisted: true }
                     : item,
