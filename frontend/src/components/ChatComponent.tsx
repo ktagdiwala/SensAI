@@ -1,5 +1,6 @@
 import { useState } from "react";
-
+import MainIcon from "../assets/MainIcon.svg"
+import CloseIcon from "../assets/xIcon.svg"
 type Message = {
     id: string,
     role: "user" | "ai",
@@ -57,12 +58,12 @@ export default function ChatComponent({ onClose }: ChatComponentProps) {
                     <div className="flex items-center justify-between gap-4 px-6 py-4">
                        
                         <div className="flex items-center gap-2">
-                            <img src="MainIcon.svg" alt="SensAi logo" className="w-6 h-6" />
+                            <img src={MainIcon} alt="SensAi logo" className="w-6 h-6" />
                             <p className="text-sm font-semibold text-gray-900">SensAi</p>
                         </div>
 
                         <button onClick={onClose} aria-label="Close chat" className="rounded-full p-1 hover:bg-gray-100 transition">
-                            <img src="xIcon.svg" alt="Close" className="w-4 h-4" />
+                            <img src={CloseIcon} alt="Close" className="w-4 h-4" />
                         </button>
                     </div>
 
@@ -70,7 +71,7 @@ export default function ChatComponent({ onClose }: ChatComponentProps) {
                     {/**TODO DECIDE TO KEEP THIS OR REMOVE IT */}
                     <div className="px-6 pb-6">
                         <div className="flex flex-col items-center gap-4 text-center">
-                            <img src="MainIcon.svg" alt="SensAi" className="w-20 drop-shadow-2xl" />
+                            <img src={MainIcon} alt="SensAi" className="w-20 drop-shadow-2xl" />
                             <p className="font-light text-gray-800">
                                 Ask me any questions you might have for Question ID
                             </p>
