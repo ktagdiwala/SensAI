@@ -62,7 +62,7 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/quiz/:quizId"
+          path="/quiz/:quizId/:accessCode"
           element={
             <RoleRoute allowedRole="Student">
               <QuizPage />

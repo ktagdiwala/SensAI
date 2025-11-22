@@ -52,7 +52,9 @@ export default function StudentPage() {
                 throw new Error("Quiz data is missing from response.");
             }
 
-            navigate(`/quiz/${encodeURIComponent(trimmedQuizId)}`);
+            navigate(
+                `/quiz/${encodeURIComponent(trimmedQuizId)}/${encodeURIComponent(trimmedPassword)}`
+            );
         } catch (err) {
             console.error("Quiz fetch error:", err);
             setError(err instanceof Error ? err.message : "Unexpected error.");

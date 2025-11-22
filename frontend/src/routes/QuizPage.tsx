@@ -1,7 +1,11 @@
 // Parent component (e.g., a page or a quiz container)
 // For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { useAuth } from "../authentication/AuthContext";
+
+const API_BASE_URL = "http://localhost:3000/api";
 
 // Example True/False question
 const questions: QuestionData[] = [
@@ -84,13 +88,83 @@ async function mockValidate({
     };
 }
 
+async function getQuestions({
+    quizId,
+    accessCode,
+}: {
+    quizId?: string;
+    accessCode?: string;
+}) {
+    if (!quizId || !accessCode) {
+        console.warn("Missing quizId or accessCode.");
+        return null;
+    }
+
+    try {
+        const res = await fetch(
+            `${API_BASE_URL}/question/quiz/${encodeURIComponent(quizId)}/accessCode/${encodeURIComponent(accessCode)}`,
+            {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+            }
+        );
+
+        const rawBody = await res.text();
+        console.log("Quiz API response (raw):", rawBody);
+
+        if (!res.ok) throw new Error("Failed to load questions.");
+
+        const data = JSON.parse(rawBody);
+        console.log("Loaded quiz questions:", data);
+        return data;
+    } catch (err) {
+        console.error("Unable to fetch quiz questions:", err);
+        return null;
+    }
+}
+
 export default function QuizPage() {
     const [answers, setAnswers] = useState<Record<string, string>>({});
-    const quizId = "abc123"; // TODO: get from route params
-    const studentId = "student-42"; // TODO: get from auth/user context
+    const [questions, setQuestions] = useState<QuestionData[]>([]);
+    const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
+    const { user } = useAuth();
 
+    const studentId = user?.id ? String(user.id) : undefined;
+
+    useEffect(() => {
+        async function loadQuiz() {
+            const data = await getQuestions({ quizId, accessCode });
+            if (!data) return;
+
+            const rows = Array.isArray(data) ? data : data?.questions ?? [];
+
+            const normalized = rows.map((row) => ({
+                id: String(row.questionId),
+                description: row.title ?? "",
+                points: 1,
+                choices: (row.options ?? []).map((label, idx) => ({
+                    id: `choice-${row.questionId}-${idx}`,
+                    label,
+                })),
+            })) satisfies QuestionData[];
+
+            setQuestions(normalized);
+        }
+        loadQuiz();
+    }, [quizId, accessCode]);
+
+
+    
     async function submitQuiz() {
         if (!confirm("Are you sure you want to submit this quiz?")) return;
+
+        if (!quizId || !studentId) {
+            alert("Missing quiz or user information.");
+            return;
+        }
 
         const payload = questions.map((q) => ({
             questionId: q.id,
@@ -98,14 +172,18 @@ export default function QuizPage() {
         }));
 
         try {
-            const res = await fetch(`/api/quiz/${encodeURIComponent(quizId)}/submit`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    studentId,          
-                    answers: payload,
-                }),
-            });
+            const res = await fetch(
+                `/api/quiz/${encodeURIComponent(quizId)}/submit`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        userId: studentId,    // match backend: userId
+                        accessCode,          // if your backend expects it
+                        answers: payload,
+                    }),
+                }
+            );
             if (!res.ok) throw new Error("Submission failed");
             alert("Quiz submitted.");
         } catch (err) {
@@ -115,8 +193,9 @@ export default function QuizPage() {
     }
 
     return (
+        
         <div>
-            {questions.map((q) => (
+            {questions.map((q, idx) => (
                 <QuestionCard
                     key={q.id}
                     data={q}
@@ -127,6 +206,7 @@ export default function QuizPage() {
                     }
                     studentId={studentId}
                     lockAfterSubmit={true}
+                    displayNumber={idx + 1}
                 />
             ))}
 
