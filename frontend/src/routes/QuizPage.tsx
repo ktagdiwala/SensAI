@@ -7,60 +7,60 @@ import { useAuth } from "../authentication/AuthContext";
 
 const API_BASE_URL = "http://localhost:3000/api";
 
-// Example True/False question
-const questions: QuestionData[] = [
-    {
-        id: "1",
-        description: "Which planet is commonly referred to as the Red Planet?",
-        choices: [
-            { id: "A", label: "Earth" },
-            { id: "B", label: "Mars" },
-            { id: "C", label: "Venus" },
-            { id: "D", label: "Jupiter" },
-        ],
-        points: 1,
-    },
-    {
-        id: "2",
-        description: "What is the derivative of x² with respect to x?",
-        choices: [
-            { id: "A", label: "x" },
-            { id: "B", label: "2x" },
-            { id: "C", label: "x²" },
-            { id: "D", label: "2" },
-        ],
-        points: 1,
-    },
-    {
-        id: "3",
-        description: "Which gas do plants primarily absorb during photosynthesis?",
-        choices: [
-            { id: "A", label: "Oxygen" },
-            { id: "B", label: "Nitrogen" },
-            { id: "C", label: "Carbon Dioxide" },
-            { id: "D", label: "Hydrogen" },
-        ],
-        points: 1,
-    },
-    {
-        id: "4",
-        description: "True or False: The Pacific Ocean is the largest ocean on Earth.",
-        choices: [
-            { id: "A", label: "True" },
-            { id: "B", label: "False" },
-        ],
-        points: 1,
-    },
-    {
-        id: "5",
-        description: "True or False: Sound travels faster in air than in water.",
-        choices: [
-            { id: "A", label: "True" },
-            { id: "B", label: "False" },
-        ],
-        points: 1,
-    },
-];
+// // Example True/False question
+// const questions: QuestionData[] = [
+//     {
+//         id: "1",
+//         description: "Which planet is commonly referred to as the Red Planet?",
+//         choices: [
+//             { id: "A", label: "Earth" },
+//             { id: "B", label: "Mars" },
+//             { id: "C", label: "Venus" },
+//             { id: "D", label: "Jupiter" },
+//         ],
+//         points: 1,
+//     },
+//     {
+//         id: "2",
+//         description: "What is the derivative of x² with respect to x?",
+//         choices: [
+//             { id: "A", label: "x" },
+//             { id: "B", label: "2x" },
+//             { id: "C", label: "x²" },
+//             { id: "D", label: "2" },
+//         ],
+//         points: 1,
+//     },
+//     {
+//         id: "3",
+//         description: "Which gas do plants primarily absorb during photosynthesis?",
+//         choices: [
+//             { id: "A", label: "Oxygen" },
+//             { id: "B", label: "Nitrogen" },
+//             { id: "C", label: "Carbon Dioxide" },
+//             { id: "D", label: "Hydrogen" },
+//         ],
+//         points: 1,
+//     },
+//     {
+//         id: "4",
+//         description: "True or False: The Pacific Ocean is the largest ocean on Earth.",
+//         choices: [
+//             { id: "A", label: "True" },
+//             { id: "B", label: "False" },
+//         ],
+//         points: 1,
+//     },
+//     {
+//         id: "5",
+//         description: "True or False: Sound travels faster in air than in water.",
+//         choices: [
+//             { id: "A", label: "True" },
+//             { id: "B", label: "False" },
+//         ],
+//         points: 1,
+//     },
+// ];
 
 //REMOVE THIS AFTER IMPLEMENTING VALIDATION FUNCTION IN BACKEND
 // DEV-ONLY mock
@@ -88,10 +88,7 @@ async function mockValidate({
     };
 }
 
-async function getQuestions({
-    quizId,
-    accessCode,
-}: {
+async function getQuestions({quizId,accessCode,}: {
     quizId?: string;
     accessCode?: string;
 }) {
@@ -135,25 +132,30 @@ export default function QuizPage() {
     const studentId = user?.id ? String(user.id) : undefined;
 
     useEffect(() => {
-        async function loadQuiz() {
-            const data = await getQuestions({ quizId, accessCode });
-            if (!data) return;
+        if (!quizId || !accessCode) return;
 
-            const rows = Array.isArray(data) ? data : data?.questions ?? [];
+        getQuestions({ quizId, accessCode }).then((data) => {
+            const rows = data?.questions ?? [];
+            type QuizApiQuestion = {
+                questionId: string | number;
+                title?: string | null;
+                options?: string[] | null;
+            }
 
-            const normalized = rows.map((row) => ({
-                id: String(row.questionId),
-                description: row.title ?? "",
-                points: 1,
-                choices: (row.options ?? []).map((label, idx) => ({
-                    id: `choice-${row.questionId}-${idx}`,
-                    label,
-                })),
-            })) satisfies QuestionData[];
+            const typedRows: QuizApiQuestion[] = rows as QuizApiQuestion[];
 
-            setQuestions(normalized);
-        }
-        loadQuiz();
+            setQuestions(
+                typedRows.map((row) => ({
+                    id: String(row.questionId),
+                    description: row.title ?? "",
+                    points: 1,
+                    choices: (row.options ?? []).map((label, idx) => ({
+                        id: `choice-${row.questionId}-${idx}`,
+                        label,
+                    })),
+                }))
+            );
+        });
     }, [quizId, accessCode]);
 
 
