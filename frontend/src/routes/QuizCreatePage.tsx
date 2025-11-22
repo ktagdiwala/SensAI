@@ -1,115 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import QuizCardInstructor, {
-  type InstructorQuestion,
-} from "../components/QuizCardInstructorComponent";
+import QuizCardInstructor from "../components/QuizCardInstructorComponent";
 import QuizQuestionInstructor from "../components/QuizQuestionComponentInstructor";
 import SearchIcon from "../assets/Search.svg";
+import { useQuizQuestions } from "../hooks/useQuizQuestions";
 
-const createChoiceId = () =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `choice-${Math.random().toString(36).slice(2, 10)}`;
 
-const extractQuestionId = (raw: any): number | null => {
-  const candidateKeys = ["questionId", "question_id", "QuestionID", "questionID", "id"];
-  for (const key of candidateKeys) {
-    if (raw?.[key] != null) {
-      const numeric = Number(raw[key]);
-      if (Number.isFinite(numeric) && numeric > 0) {
-        return numeric;
-      }
-    }
-  }
-  return null;
-};
-
-const normalizeOtherAnswers = (otherAns: unknown): string[] => {
-  if (Array.isArray(otherAns)) {
-    return otherAns.map((value) => (typeof value === "string" ? value : String(value)));
-  }
-  if (typeof otherAns === "string") {
-    if (!otherAns.trim()) return [];
-    try {
-      const parsed = JSON.parse(otherAns);
-      if (Array.isArray(parsed)) {
-        return parsed.map((value) => (typeof value === "string" ? value : String(value)));
-      }
-    } catch {
-      // ignore parse errors
-    }
-    return otherAns
-      .split("{|}")
-      .map((entry) => entry.trim())
-      .filter((entry) => entry.length > 0);
-  }
-  return [];
-};
-
-const inferQuestionType = (choices: string[]): "true_false" | "multiple_choice" => {
-  if (choices.length === 2) {
-    const normalized = choices.map((label) => label.trim().toLowerCase());
-    if (normalized.includes("true") && normalized.includes("false")) {
-      return "true_false";
-    }
-  }
-  return "multiple_choice";
-};
-
-const mapServerQuestion = (raw: any): InstructorQuestion => {
-  const questionId = extractQuestionId(raw);
-  const instructorPrompt =
-    typeof raw?.questionPrompt === "string"
-      ? raw.questionPrompt
-      : typeof raw?.promptContext === "string"
-      ? raw.promptContext
-      : "";
-  const promptText =
-    typeof raw?.prompt === "string" && raw.prompt.trim().length > 0
-      ? raw.prompt
-      : instructorPrompt;
-
-  const normalizedPrompt =
-    typeof promptText === "string" && promptText.trim().length > 0
-      ? promptText
-      : null;
-
-  const otherAnswers = normalizeOtherAnswers(raw?.otherAns);
-  const allChoices = [
-    raw?.correctAns ?? "",
-    ...otherAnswers.filter((label) => label != null),
-  ].map((label) => (label == null ? "" : String(label)));
-
-  const choiceEntries =
-    allChoices.length > 0
-      ? allChoices.map((label) => ({
-          id: createChoiceId(),
-          label,
-        }))
-      : [{ id: createChoiceId(), label: "" }];
-
-  const correctChoiceId = choiceEntries[0].id;
-  const questionType = inferQuestionType(allChoices);
-  const numericPoints = Number(raw?.points);
-  const points = Number.isNaN(numericPoints) ? 1 : numericPoints;
-  const questionText =
-    typeof raw?.title === "string" && raw.title.trim().length > 0
-      ? raw.title
-      : `Question ${raw?.id ?? ""}`.trim();
-
-  return {
-    id: questionId ?? 0,
-    title: questionText,
-    description: questionText,
-    prompt: normalizedPrompt,
-    points,
-    choices: choiceEntries,
-    type: questionType,
-    correctChoiceId,
-    isPersisted: Boolean(questionId),
-  };
-};
-
+// ========================================
+// UI CONFIG: Tabs and option interfaces
+// ========================================
 const tabs = [
   { id: "details", label: "Details" },
   { id: "questions", label: "Questions" },
@@ -123,25 +22,56 @@ interface CourseOption {
 const COURSE_LIST_ENDPOINT = "http://localhost:3000/api/quiz/courses";
 
 export default function QuizCreatePage() {
+  // ========================================
+  // ROUTER HOOKS
+  // - quizId indicates edit vs create mode
+  // ========================================
   const { quizId } = useParams<{ quizId?: string }>();
   const navigate = useNavigate();
+
+  // ========================================
+  // QUIZ FORM STATE (DETAILS TAB)
+  // - quizName, systemPrompt, accessCode, courseId
+  // ========================================
   const [activeTab, setActiveTab] = useState<"details" | "questions">("details");
   const [quizName, setQuizName] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [courseId, setCourseId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [questions, setQuestions] = useState<InstructorQuestion[]>([]);
-  const [isQuestionModalOpen, setQuestionModalOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<InstructorQuestion | null>(null);
-  const [modalQuestionNumber, setModalQuestionNumber] = useState<number>(1);
-  const [isLoadingQuestions, setLoadingQuestions] = useState(false);
-  const [questionsError, setQuestionsError] = useState<string | null>(null);
+
+  // ========================================
+  // QUESTIONS STATE (QUESTIONS TAB)
+  // - managed via custom hook to isolate CRUD logic
+  // ========================================
+  const {
+    questions,
+    questionsError,
+    isLoadingQuestions,
+    nextQuestionId,
+    isQuestionModalOpen,
+    editingQuestion,
+    modalQuestionNumber,
+    openNewQuestionModal,
+    openEditQuestionModal,
+    closeQuestionModal,
+    handleDeleteQuestion,
+    handleQuestionSave,
+  } = useQuizQuestions(quizId, courseId);
+
+  // ========================================
+  // COURSE DROPDOWN + SEARCH STATE
+  // - course list from backend
+  // - search term and errors
+  // ========================================
   const [courses, setCourses] = useState<CourseOption[]>([]);
   const [isCoursesLoading, setCoursesLoading] = useState(false);
   const [courseListError, setCourseListError] = useState<string | null>(null);
   const [courseSearchTerm, setCourseSearchTerm] = useState("");
 
+  // ========================================
+  // EFFECT: Lock/unlock body scroll when question modal is open
+  // ========================================
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.style.overflow = isQuestionModalOpen ? "hidden" : "";
@@ -150,24 +80,23 @@ export default function QuizCreatePage() {
     };
   }, [isQuestionModalOpen]);
 
+  // ========================================
+  // DERIVED STATE: Filtered list of courses by search term
+  // ========================================
   const visibleCourses = useMemo(() => {
     const query = courseSearchTerm.trim().toLowerCase();
     if (!query) {
       return courses;
     }
-    const matches = courses.filter((course) =>
+    return courses.filter((course) =>
       course.title.toLowerCase().includes(query),
     );
-    if (courseId && !matches.some((course) => String(course.id) === courseId)) {
-      const selected = courses.find((course) => String(course.id) === courseId);
-      return selected ? [selected, ...matches] : matches;
-    }
-    return matches;
-  }, [courses, courseSearchTerm, courseId]);
+  }, [courses, courseSearchTerm]);
 
-  const nextQuestionId =
-    (questions.length ? Math.max(...questions.map((question) => question.id)) : 0) + 1;
-
+  // ========================================
+  // HANDLER: Save quiz details (create or update)
+  // - sends only quiz metadata, not questions
+  // ========================================
   async function handleSaveQuiz(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
@@ -192,7 +121,7 @@ export default function QuizCreatePage() {
         throw new Error(`Save failed with status ${response.status}`);
       }
 
-      // TODO: persist questions via dedicated endpoint once available
+      // NOTE: Questions are persisted via separate question endpoints
       navigate("/instructors");
     } catch (error) {
       console.error(error);
@@ -201,78 +130,20 @@ export default function QuizCreatePage() {
     }
   }
 
-  const handleDeleteQuestion = (id: number) => {
-    setQuestionsError(null);
-    const target = questions.find((question) => question.id === id);
-    if (!target) return;
-
-    const questionIdNumber = Number(target.id);
-    if (!Number.isFinite(questionIdNumber) || questionIdNumber <= 0) {
-      setQuestionsError("Cannot remove question: missing identifier.");
-      return;
-    }
-
-    const previous = questions;
-    setQuestions((prev) => prev.filter((question) => question.id !== id));
-
-    if (!quizId || !target.isPersisted) {
-      return;
-    }
-
-    const quizIdNumber = Number(quizId);
-    if (Number.isNaN(quizIdNumber)) {
-      setQuestions(previous);
-      setQuestionsError("Invalid quiz identifier.");
-      return;
-    }
-
-    (async () => {
-      try {
-        const response = await fetch("http://localhost:3000/api/question/removeFromQuiz", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ quizId: quizIdNumber, questionId: questionIdNumber }),
-        });
-
-        if (!response.ok) {
-          const errorPayload = await response.json().catch(() => null);
-          throw new Error(
-            errorPayload?.message ?? "Failed to remove question from quiz.",
-          );
-        }
-
-        const deleteResponse = await fetch(
-          `http://localhost:3000/api/question/delete/${questionIdNumber}`,
-          { method: "DELETE", credentials: "include" },
-        );
-
-        if (!deleteResponse.ok) {
-          const errorPayload = await deleteResponse.json().catch(() => null);
-          setQuestionsError(
-            errorPayload?.message ?? "Question detached, but deletion failed.",
-          );
-        }
-      } catch (error) {
-        console.error(error);
-        setQuestionsError(
-          error instanceof Error ? error.message : "Failed to remove question.",
-        );
-        setQuestions(previous);
-      }
-    })();
-  };
-
+  // ========================================
+  // EFFECT: Load quiz details when editing existing quiz
+  // - Populates form fields
+  // ========================================
   useEffect(() => {
     if (!quizId) {
-      setQuestions([]);
-      setLoadingQuestions(false);
+      setQuizName("");
+      setSystemPrompt("");
+      setAccessCode("");
+      setCourseId("");
       return;
     }
 
     let isMounted = true;
-    setLoadingQuestions(true);
-    setQuestionsError(null);
 
     (async () => {
       try {
@@ -296,43 +167,6 @@ export default function QuizCreatePage() {
         if (!isMounted) return;
         console.error(error);
       }
-
-      try {
-        const questionResponse = await fetch(
-          `http://localhost:3000/api/question/quiz/${quizId}`,
-          { credentials: "include" },
-        );
-
-        if (!questionResponse.ok) {
-          if (questionResponse.status === 404) {
-            if (isMounted) {
-              setQuestions([]);
-            }
-          } else {
-            const errorPayload = await questionResponse.json().catch(() => null);
-            throw new Error(
-              errorPayload?.message ?? `Failed with status ${questionResponse.status}`,
-            );
-          }
-        } else {
-          const questionData = await questionResponse.json();
-          if (isMounted) {
-            const fetched = Array.isArray(questionData.questions)
-              ? questionData.questions
-              : [];
-            setQuestions(fetched.map(mapServerQuestion));
-          }
-        }
-      } catch (error) {
-        if (!isMounted) return;
-        console.error(error);
-        setQuestions([]);
-        setQuestionsError("Unable to load quiz questions.");
-      } finally {
-        if (isMounted) {
-          setLoadingQuestions(false);
-        }
-      }
     })();
 
     return () => {
@@ -340,7 +174,9 @@ export default function QuizCreatePage() {
     };
   }, [quizId]);
 
-  {/**Course search */}
+  // ========================================
+  // EFFECT: Load course list for dropdown + search
+  // ========================================
   useEffect(() => {
     let isActive = true;
     setCoursesLoading(true);
@@ -352,36 +188,14 @@ export default function QuizCreatePage() {
           throw new Error(`Failed with status ${response.status}`);
         }
         const payload = await response.json();
-        const potentialList = Array.isArray(payload?.courses)
-          ? payload.courses
-          : [];
-        interface RawCourse {
-          courseId?: number | string;
-          id?: number | string;
-          title?: string;
-          name?: string;
-        }
+        const rawCourses: { courseId: number; title: string }[] =
+          Array.isArray(payload?.courses) ? payload.courses : [];
 
-        interface CourseOption {
-          id: number;
-          title: string;
-        }
+        const normalized: CourseOption[] = rawCourses.map((course) => ({
+          id: course.courseId,
+          title: course.title,
+        }));
 
-        const normalized: CourseOption[] = potentialList
-          .map((raw: RawCourse): CourseOption | null => {
-            const idCandidate: number = Number(raw?.courseId ?? raw?.id);
-            const titleCandidate: string | null =
-              typeof raw?.title === "string"
-          ? raw.title
-          : typeof raw?.name === "string"
-          ? raw.name
-          : null;
-            if (!Number.isFinite(idCandidate) || !titleCandidate) {
-              return null;
-            }
-            return { id: idCandidate, title: titleCandidate };
-          })
-          .filter((item: CourseOption | null): item is CourseOption => item != null);
         if (isActive) {
           setCourses(normalized);
         }
@@ -404,8 +218,15 @@ export default function QuizCreatePage() {
     };
   }, []);
 
+  // ========================================
+  // RENDER: Page layout and content
+  // - Top nav tabs
+  // - Details form
+  // - Questions list + actions
+  // ========================================
   return (
     <div className="min-h-screen bg-white">
+      {/* ---------- Top navigation tabs ---------- */}
       <nav className="border-b border-gray-200">
         <div className="mx-auto flex max-w-4xl justify-center gap-12 px-6">
           {tabs.map((tab) => (
@@ -427,7 +248,11 @@ export default function QuizCreatePage() {
 
       <main className="mx-auto w-full max-w-4xl px-6 py-12">
         {activeTab === "details" ? (
+          // ========================================
+          // DETAILS TAB: Quiz metadata form
+          // ========================================
           <form className="space-y-8" onSubmit={handleSaveQuiz}>
+            {/* Quiz name */}
             <div>
               <label htmlFor="quiz-name" className="text-sm font-semibold text-gray-700">
                 Quiz Name
@@ -442,7 +267,7 @@ export default function QuizCreatePage() {
               />
             </div>
 
-
+            {/* System prompt for AI */}
             <div>
               <label htmlFor="system-prompt" className="text-sm font-semibold text-gray-700">
                 Enter system prompt for AI
@@ -457,6 +282,7 @@ export default function QuizCreatePage() {
               />
             </div>
 
+            {/* Access code */}
             <div>
               <label htmlFor="access-code" className="text-sm font-semibold text-gray-700">
                 Access Code
@@ -471,8 +297,7 @@ export default function QuizCreatePage() {
               />
             </div>
 
-            
-            {/**TODO make this searchable for a course in the backend */}
+            {/* Course selection + search */}
             <div>
               <label htmlFor="course-id" className="text-sm font-semibold text-gray-700">
                 Course
@@ -516,6 +341,7 @@ export default function QuizCreatePage() {
                 )}
             </div>
 
+            {/* Form actions */}
             <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
@@ -533,43 +359,40 @@ export default function QuizCreatePage() {
             </div>
           </form>
         ) : (
+          // ========================================
+          // QUESTIONS TAB: List of questions + actions
+          // ========================================
           <div className="space-y-10">
+            {/* Error banner for question operations */}
             {questionsError && (
               <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                 {questionsError}
               </div>
             )}
 
+            {/* Loading state for questions */}
             {isLoadingQuestions ? (
               <div className="text-center text-sm text-gray-500">Loading questions...</div>
             ) : (
               <>
+                {/* Existing questions list */}
                 {questions.map((question, index) => (
                   <QuizCardInstructor
                     key={question.id}
                     question={question}
                     position={index + 1}
                     onDelete={handleDeleteQuestion}
-                    onEdit={() => {
-                      setQuestionsError(null);
-                      setEditingQuestion(question);
-                      setModalQuestionNumber(index + 1);
-                      setQuestionModalOpen(true);
-                    }}
+                    onEdit={() => openEditQuestionModal(question)}
                   />
                 ))}
               </>
             )}
 
+            {/* Actions: New question & Find questions (future) */}
             <div className="flex justify-center gap-4 pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  setQuestionsError(null);
-                  setEditingQuestion(null);
-                  setModalQuestionNumber(questions.length + 1);
-                  setQuestionModalOpen(true);
-                }}
+                onClick={openNewQuestionModal}
                 className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
               >
                 <span className="text-base">＋</span>
@@ -587,146 +410,18 @@ export default function QuizCreatePage() {
         )}
       </main>
 
+      {/* ========================================
+         QUESTION MODAL
+         - Handles create and update flows for questions
+         ======================================== */}
       {isQuestionModalOpen && (
         <QuizQuestionInstructor
           nextId={nextQuestionId}
           initialQuestion={editingQuestion}
-          onCancel={() => {
-            setQuestionModalOpen(false);
-            setEditingQuestion(null);
-            setModalQuestionNumber(questions.length + 1);
-          }}
+          onCancel={closeQuestionModal}
           onSave={async (question, { isNew }) => {
-            if (!quizId) {
-              throw new Error("Save quiz details before adding questions.");
-            }
-
-            const quizIdNumber = Number(quizId);
-            if (Number.isNaN(quizIdNumber)) {
-              throw new Error("Invalid quiz identifier.");
-            }
-
-            const courseIdNumber = Number(courseId);
-            if (Number.isNaN(courseIdNumber)) {
-              throw new Error("Course ID is required before saving questions.");
-            }
-
-            const correctChoice = question.choices.find(
-              (choice) => choice.id === question.correctChoiceId,
-            );
-            if (!correctChoice) {
-              throw new Error("Select a correct answer before saving.");
-            }
-
-            const otherAnswers = question.choices
-              .filter((choice) => choice.id !== question.correctChoiceId)
-              .map((choice) => choice.label);
-
-            setQuestionsError(null);
-
-            if (isNew) {
-              const createResponse = await fetch(
-                "http://localhost:3000/api/question/create",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  credentials: "include",
-                  body: JSON.stringify({
-                    title: question.description,
-                    correctAns: correctChoice.label,
-                    otherAns: otherAnswers.join("{|}"),
-                    prompt: question.prompt ?? null,
-                    questionPrompt: question.prompt ?? null,
-                    courseId: courseIdNumber,
-                  }),
-                },
-              );
-
-              if (!createResponse.ok) {
-                const errorBody = await createResponse.json().catch(() => null);
-                throw new Error(errorBody?.message ?? "Unable to create question.");
-              }
-
-              const createData = await createResponse.json();
-              const persistedQuestionId = Number(createData.questionId);
-
-              if (!persistedQuestionId) {
-                throw new Error("Question ID missing from server response.");
-              }
-
-              const addResponse = await fetch(
-                "http://localhost:3000/api/question/addToQuiz",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  credentials: "include",
-                  body: JSON.stringify({
-                    quizId: quizIdNumber,
-                    questionId: persistedQuestionId,
-                  }),
-                },
-              );
-
-              if (!addResponse.ok) {
-                const errorBody = await addResponse.json().catch(() => null);
-                await fetch(
-                  `http://localhost:3000/api/question/delete/${persistedQuestionId}`,
-                  { method: "DELETE", credentials: "include" },
-                ).catch(() => undefined);
-                throw new Error(
-                  errorBody?.message ?? "Unable to attach question to quiz.",
-                );
-              }
-
-              setQuestions((previous) => [
-                ...previous,
-                {
-                  ...question,
-                  id: persistedQuestionId,
-                  title: question.description,
-                  isPersisted: true,
-                },
-              ]);
-            } else {
-              if (!question.id) {
-                throw new Error("Missing question identifier.");
-              }
-
-              const updateResponse = await fetch(
-                `http://localhost:3000/api/question/update/${question.id}`,
-                {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  credentials: "include",
-                  body: JSON.stringify({
-                    title: question.description,
-                    correctAns: correctChoice.label,
-                    otherAns: otherAnswers.join("{|}"),
-                    prompt: question.prompt ?? null,
-                    questionPrompt: question.prompt ?? null,
-                    courseId: courseIdNumber,
-                  }),
-                },
-              );
-
-              if (!updateResponse.ok) {
-                const errorBody = await updateResponse.json().catch(() => null);
-                throw new Error(errorBody?.message ?? "Unable to update question.");
-              }
-
-              setQuestions((previous: InstructorQuestion[]) =>
-                previous.map((item: InstructorQuestion) =>
-                  item.id === question.id
-                    ? { ...question, title: question.description, isPersisted: true }
-                    : item,
-                ),
-              );
-            }
-
-            setQuestionModalOpen(false);
-            setEditingQuestion(null);
+            await handleQuestionSave(question, { isNew });
             setActiveTab("questions");
-            setModalQuestionNumber(questions.length + 1);
           }}
           displayNumber={modalQuestionNumber}
         />
