@@ -1,6 +1,10 @@
 const request = require('supertest');
 const { spawn } = require('child_process');
 const path = require('path');
+const dotenv = require('dotenv');
+
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 const SERVER_START_TIMEOUT = process.env.SERVER_START_TIMEOUT
   ? parseInt(process.env.SERVER_START_TIMEOUT, 10)
