@@ -2,7 +2,7 @@
 // For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
 import { useAuth } from "../authentication/AuthContext";
 
 const API_BASE_URL = "http://localhost:3000/api";
@@ -48,6 +48,7 @@ export default function QuizPage() {
     const [questions, setQuestions] = useState<QuestionData[]>([]);
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();
+    const navigate = useNavigate();               
 
     const studentId = user?.id ? String(user.id) : undefined;
 
@@ -83,33 +84,50 @@ export default function QuizPage() {
     async function submitQuiz() {
         if (!confirm("Are you sure you want to submit this quiz?")) return;
 
-        if (!quizId || !studentId) {
-            alert("Missing quiz or user information.");
+        if (!quizId) {
+            alert("Missing quiz information.");
             return;
         }
 
-        const payload = questions.map((q) => ({
-            questionId: q.id,
-            answer: answers[q.id] ?? "null",
-        }));
+        // Build questionArray with questionId + givenAnswer(label) + numMsgs
+        const questionArray = questions.map((q) => {
+            const choiceId = answers[q.id];           // stored selected choice id
+            const choice = q.choices.find(c => c.id === choiceId);
+            const givenAnswer = choice?.label ?? "";  // send label text (or empty if none)
+            return {
+                questionId: q.id,
+                givenAnswer,
+                numMsgs: 0,
+            };
+        }).filter(q => q.givenAnswer !== "");        // optional: only include answered
+
+        if (questionArray.length === 0) {
+            alert("You have not answered any questions.");
+            return;
+        }
 
         try {
             const res = await fetch(
-                `/api/quiz/${encodeURIComponent(quizId)}/submit`,
+                `${API_BASE_URL}/attempt/submit-quiz`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
+                    credentials: "include",
                     body: JSON.stringify({
-                        userId: studentId,    // match backend: userId
-                        accessCode,          
-                        answers: payload,
+                        quizId,
+                        questionArray,
                     }),
                 }
             );
-            if (!res.ok) throw new Error("Submission failed");
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || "Submission failed");
+            }
+
             alert("Quiz submitted.");
+            navigate("/student");       
         } catch (err) {
-            console.error(err);
+            console.error("Quiz submission failed", err);
             alert("Could not submit quiz.");
         }
     }
