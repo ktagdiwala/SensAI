@@ -7,87 +7,6 @@ import { useAuth } from "../authentication/AuthContext";
 
 const API_BASE_URL = "http://localhost:3000/api";
 
-// // Example True/False question
-// const questions: QuestionData[] = [
-//     {
-//         id: "1",
-//         description: "Which planet is commonly referred to as the Red Planet?",
-//         choices: [
-//             { id: "A", label: "Earth" },
-//             { id: "B", label: "Mars" },
-//             { id: "C", label: "Venus" },
-//             { id: "D", label: "Jupiter" },
-//         ],
-//         points: 1,
-//     },
-//     {
-//         id: "2",
-//         description: "What is the derivative of x² with respect to x?",
-//         choices: [
-//             { id: "A", label: "x" },
-//             { id: "B", label: "2x" },
-//             { id: "C", label: "x²" },
-//             { id: "D", label: "2" },
-//         ],
-//         points: 1,
-//     },
-//     {
-//         id: "3",
-//         description: "Which gas do plants primarily absorb during photosynthesis?",
-//         choices: [
-//             { id: "A", label: "Oxygen" },
-//             { id: "B", label: "Nitrogen" },
-//             { id: "C", label: "Carbon Dioxide" },
-//             { id: "D", label: "Hydrogen" },
-//         ],
-//         points: 1,
-//     },
-//     {
-//         id: "4",
-//         description: "True or False: The Pacific Ocean is the largest ocean on Earth.",
-//         choices: [
-//             { id: "A", label: "True" },
-//             { id: "B", label: "False" },
-//         ],
-//         points: 1,
-//     },
-//     {
-//         id: "5",
-//         description: "True or False: Sound travels faster in air than in water.",
-//         choices: [
-//             { id: "A", label: "True" },
-//             { id: "B", label: "False" },
-//         ],
-//         points: 1,
-//     },
-// ];
-
-//REMOVE THIS AFTER IMPLEMENTING VALIDATION FUNCTION IN BACKEND
-// DEV-ONLY mock
-const correctAnswers: Record<string, string> = {
-    "1": "B", // Mars is known as the Red Planet.
-    "2": "B", // d/dx (x²) = 2x.
-    "3": "C", // Plants absorb CO₂.
-    "4": "A", // Pacific Ocean is the largest.
-    "5": "B", // Sound travels faster in water than in air.
-};
-
-async function mockValidate({
-    questionId,
-    choiceId,
-    studentId,
-}: {
-    questionId: string;
-    choiceId: string;
-    studentId?: string;
-}): Promise<AnswerFeedback> {
-    const correct = correctAnswers[questionId] === choiceId;
-    return {
-        correct,
-        explanation: correct ? "Nice job!" : "Review the lecture notes for this topic.",
-    };
-}
-
 async function getQuestions({quizId,accessCode,}: {
     quizId?: string;
     accessCode?: string;
@@ -122,6 +41,7 @@ async function getQuestions({quizId,accessCode,}: {
         return null;
     }
 }
+
 
 export default function QuizPage() {
     const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -181,7 +101,7 @@ export default function QuizPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         userId: studentId,    // match backend: userId
-                        accessCode,          // if your backend expects it
+                        accessCode,          
                         answers: payload,
                     }),
                 }
@@ -194,14 +114,62 @@ export default function QuizPage() {
         }
     }
 
+    const submitAnswer = async ({
+        questionId,
+        choiceId,
+    }: {
+        questionId: string;
+        choiceId: string;
+        studentId?: string;
+    }): Promise<AnswerFeedback> => {
+        if (!quizId) {
+            return { correct: false, explanation: "Quiz not loaded yet." };
+        }
+
+        // Find the question and choice so we can send the actual answer text
+        const question = questions.find(q => q.id === questionId);
+        const choice = question?.choices.find(c => c.id === choiceId);
+        const givenAns = choice?.label ?? choiceId; // fall back to id if label missing
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/attempt/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    quizId,
+                    questionId,
+                    givenAns,
+                    numMsgs: 0,
+                }),
+            });
+
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || "Validation failed");
+            }
+
+            const data = await res.json();
+            return {
+                correct: !!data?.isCorrect,
+                explanation: data?.message,
+            };
+        } catch (err) {
+            console.error("Answer validation failed", err);
+            return {
+                correct: false,
+                explanation: "Unable to validate answer. Please retry.",
+            };
+        }
+    };
+
     return (
-        
         <div>
             {questions.map((q, idx) => (
                 <QuestionCard
                     key={q.id}
                     data={q}
-                    validate={mockValidate}
+                    validate={submitAnswer}
                     selected={answers[q.id] ?? null}
                     onSelect={(choiceId) =>
                         setAnswers((prev) => ({ ...prev, [q.id]: choiceId }))
