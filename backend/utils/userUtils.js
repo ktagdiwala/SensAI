@@ -157,6 +157,28 @@ async function hasUserApiKey(userId) {
 	}
 }
 
+/** clearApiKey
+ * Clears a user's API key from the database.
+ * @param {number} userId - The ID of the user
+ * @returns {Promise<boolean>} - True if update successful, false otherwise
+ */
+async function clearApiKey(userId) {
+	const sql = 'UPDATE user SET apiKey = NULL WHERE userId = ?';
+
+	try {
+		const [result] = await pool.query(sql, [userId]);
+
+		if (result.affectedRows === 0) {
+			return false;
+		}
+
+		return true;
+	} catch (error) {
+		console.error("Error clearing user API key:", error);
+		throw error;
+	}
+}
+
 /** getUserById
  * Retrieves non-sensitive user information by ID.
  * @param {number} userId - The ID of the user
@@ -217,6 +239,7 @@ module.exports = {
 	updateUserApiKey,
 	getUserApiKey,
 	hasUserApiKey,
+	clearApiKey,
 	getUserById,
 	updateUser
 };

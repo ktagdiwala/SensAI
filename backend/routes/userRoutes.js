@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { verifySession } = require('../middleware/sessionMiddleware');
-const {hasUserApiKey,
+const {hasUserApiKey, 
+	clearApiKey,
 	getUserById,
 	updateUser
 } = require('../utils/userUtils');
@@ -79,6 +80,25 @@ router.get('/user/has-api-key', verifySession, async (req, res) => {
 		});
 	} catch (error) {
 		console.error('Error checking API key status:', error);
+		return res.status(500).json({ message: 'Internal server error' });
+	}
+});
+
+/** DELETE /user/api-key
+ * Clears the current user's API key (requires authentication)
+ * @returns {object} - Success message
+ */
+router.delete('/user/api-key', verifySession, async (req, res) => {
+	try {
+		const { userId } = req.session;
+		await clearApiKey(userId);
+
+		return res.status(200).json({
+			success: true,
+			message: 'API key cleared successfully'
+		});
+	} catch (error) {
+		console.error('Error clearing API key:', error);
 		return res.status(500).json({ message: 'Internal server error' });
 	}
 });
