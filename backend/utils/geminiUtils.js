@@ -3,9 +3,10 @@ require('dotenv').config();	// For loading GEMINI_API_KEY from .env file
 const { getQuizById } = require('./quizUtils');
 const { getQuestionById } = require('./questionUtils');
 const { getCorrectAns } = require('./attemptUtils');
+const { getUserApiKey } = require('./userUtils');
 
 // The client gets the API key from the environment variable `GEMINI_API_KEY`.
-const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY});
+const apiKeyFromEnv = process.env.GEMINI_API_KEY || null;
 
 // This will be made more efficient later using caching https://ai.google.dev/gemini-api/docs/caching?lang=node
 /* You can view usage and rate limits for your current API key by going to 
@@ -19,7 +20,7 @@ const ai = new GoogleGenAI({apiKey: process.env.GEMINI_API_KEY});
  * @param {string} chatHistory OPTIONAL
  * @returns 
  */
-async function getResponse(studentMessage, quizId, questionId, chatHistory=""){
+async function getResponse(userId, studentMessage, quizId, questionId, chatHistory=""){
 	const {title: quizTitle, prompt: quizPrompt} = await getQuizById(quizId);
 	const {title: questionText, prompt: questionPrompt} = await getQuestionById(questionId);
 	const correctAns = await getCorrectAns(questionId);
@@ -36,6 +37,9 @@ async function getResponse(studentMessage, quizId, questionId, chatHistory=""){
 			Here is the instructor's prompt for this particular question (if this is empty, you can ignore it): ${questionPrompt}
 			Here is the chat history between you and the student so far (if empty, you can ignore it): ${chatHistory}`;
 	const prompt = "Here is the student's latest message, which you need to respond to: " + studentMessage + " | Check if the student made any mistakes in their message, gently correct them if needed.";
+	const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
+	const ai = new GoogleGenAI({apiKey: apiKey});
+	
   	const response = await ai.models.generateContent({
 		model: "gemini-2.5-flash",
 		config: {
