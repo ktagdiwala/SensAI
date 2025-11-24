@@ -1,70 +1,77 @@
-import { useEffect, useState } from "react";
-import QuizCardInstructor, {
-  type InstructorQuestion,
-} from "../components/QuizCardInstructorComponent";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import QuizCardInstructor from "../components/QuizCardInstructorComponent";
 import QuizQuestionInstructor from "../components/QuizQuestionComponentInstructor";
 import SearchIcon from "../assets/Search.svg";
+import { useQuizQuestions } from "../hooks/useQuizQuestions";
 
+
+// ========================================
+// UI CONFIG: Tabs and option interfaces
+// ========================================
 const tabs = [
   { id: "details", label: "Details" },
   { id: "questions", label: "Questions" },
 ];
 
-const mockQuestions: InstructorQuestion[] = [
-  {
-    id: 1,
-    title: "Question 1",
-    description:
-      "This is some sample text, pretend this is a question that is asking truth or false value.",
-    points: 1,
-    choices: [
-      { id: "true", label: "True" },
-      { id: "false", label: "False" },
-    ],
-    type: "true_false",
-    correctChoiceId: "true",
-  },
-  {
-    id: 2,
-    title: "Question 2",
-    description:
-      "Which component is responsible for performing arithmetic and logic operations in a computer?",
-    points: 2,
-    choices: [
-      { id: "alu", label: "Arithmetic Logic Unit" },
-      { id: "gpu", label: "Graphics Processing Unit" },
-      { id: "ssd", label: "Solid State Drive" },
-      { id: "ram", label: "Random Access Memory" },
-    ],
-    type: "multiple_choice",
-    correctChoiceId: "alu",
-  },
-  {
-    id: 3,
-    title: "Question 3",
-    description:
-      "When writing CSS, which selector targets an element with the id of “app-container”?",
-    points: 1,
-    choices: [
-      { id: "class", label: ".app-container" },
-      { id: "id", label: "#app-container" },
-      { id: "tag", label: "<app-container>" },
-    ],
-    type: "multiple_choice",
-    correctChoiceId: "id",
-  },
-];
+interface CourseOption {
+  id: number;
+  title: string;
+}
+
+const COURSE_LIST_ENDPOINT = "http://localhost:3000/api/quiz/courses";
 
 export default function QuizCreatePage() {
+  // ========================================
+  // ROUTER HOOKS
+  // - quizId indicates edit vs create mode
+  // ========================================
+  const { quizId } = useParams<{ quizId?: string }>();
+  const navigate = useNavigate();
+
+  // ========================================
+  // QUIZ FORM STATE (DETAILS TAB)
+  // - quizName, systemPrompt, accessCode, courseId
+  // ========================================
   const [activeTab, setActiveTab] = useState<"details" | "questions">("details");
   const [quizName, setQuizName] = useState("");
-  const [instructions, setInstructions] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [accessCode, setAccessCode] = useState("");
+  const [courseId, setCourseId] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [questions, setQuestions] = useState<InstructorQuestion[]>(mockQuestions);
-  const [isQuestionModalOpen, setQuestionModalOpen] = useState(false);
-  const [editingQuestion, setEditingQuestion] = useState<InstructorQuestion | null>(null);
 
+  // ========================================
+  // QUESTIONS STATE (QUESTIONS TAB)
+  // - managed via custom hook to isolate CRUD logic
+  // ========================================
+  const {
+    questions,
+    questionsError,
+    isLoadingQuestions,
+    nextQuestionId,
+    isQuestionModalOpen,
+    editingQuestion,
+    modalQuestionNumber,
+    openNewQuestionModal,
+    openEditQuestionModal,
+    closeQuestionModal,
+    handleDeleteQuestion,
+    handleQuestionSave,
+  } = useQuizQuestions(quizId, courseId);
+
+  // ========================================
+  // COURSE DROPDOWN + SEARCH STATE
+  // - course list from backend
+  // - search term and errors
+  // ========================================
+  const [courses, setCourses] = useState<CourseOption[]>([]);
+  const [isCoursesLoading, setCoursesLoading] = useState(false);
+  const [courseListError, setCourseListError] = useState<string | null>(null);
+  const [courseSearchTerm, setCourseSearchTerm] = useState("");
+
+  // ========================================
+  // EFFECT: Lock/unlock body scroll when question modal is open
+  // ========================================
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.body.style.overflow = isQuestionModalOpen ? "hidden" : "";
@@ -73,36 +80,153 @@ export default function QuizCreatePage() {
     };
   }, [isQuestionModalOpen]);
 
-  const nextQuestionId =
-    (questions.length ? Math.max(...questions.map((question) => question.id)) : 0) + 1;
+  // ========================================
+  // DERIVED STATE: Filtered list of courses by search term
+  // ========================================
+  const visibleCourses = useMemo(() => {
+    const query = courseSearchTerm.trim().toLowerCase();
+    if (!query) {
+      return courses;
+    }
+    return courses.filter((course) =>
+      course.title.toLowerCase().includes(query),
+    );
+  }, [courses, courseSearchTerm]);
 
+  // ========================================
+  // HANDLER: Save quiz details (create or update)
+  // - sends only quiz metadata, not questions
+  // ========================================
   async function handleSaveQuiz(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSaving(true);
-
     try {
-      const payload = {
-        quiz: {
-          name: quizName.trim(),
-          instructions: instructions.trim(),
-          systemPrompt: systemPrompt.trim(),
-        },
-        questions,
+      const body = {
+        title: quizName.trim(),
+        prompt: systemPrompt.trim(),
+        accessCode: accessCode.trim(),
+        courseId: courseId ? Number(courseId) : null,
       };
+      const endpoint = quizId
+        ? `http://localhost:3000/api/quiz/update/${quizId}`
+        : "http://localhost:3000/api/quiz/create";
+      const method = quizId ? "PUT" : "POST";
+      const response = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        throw new Error(`Save failed with status ${response.status}`);
+      }
 
-      console.log("Quiz payload preview", payload);
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      // NOTE: Questions are persisted via separate question endpoints
+      navigate("/instructors");
+    } catch (error) {
+      console.error(error);
     } finally {
       setIsSaving(false);
     }
   }
 
-  function handleDeleteQuestion(id: number) {
-    setQuestions((prev) => prev.filter((question) => question.id !== id));
-  }
+  // ========================================
+  // EFFECT: Load quiz details when editing existing quiz
+  // - Populates form fields
+  // ========================================
+  useEffect(() => {
+    if (!quizId) {
+      setQuizName("");
+      setSystemPrompt("");
+      setAccessCode("");
+      setCourseId("");
+      return;
+    }
 
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const response = await fetch(`http://localhost:3000/api/quiz/id/${quizId}`, {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!isMounted) return;
+
+        const quiz = data.quiz ?? {};
+        setQuizName(quiz.title ?? "");
+        setSystemPrompt(quiz.prompt ?? "");
+        setAccessCode(quiz.accessCode ?? "");
+        setCourseId(quiz.courseId ? String(quiz.courseId) : "");
+      } catch (error) {
+        if (!isMounted) return;
+        console.error(error);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [quizId]);
+
+  // ========================================
+  // EFFECT: Load course list for dropdown + search
+  // ========================================
+  useEffect(() => {
+    let isActive = true;
+    setCoursesLoading(true);
+    setCourseListError(null);
+
+    fetch(COURSE_LIST_ENDPOINT, { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Failed with status ${response.status}`);
+        }
+        const payload = await response.json();
+        const rawCourses: { courseId: number; title: string }[] =
+          Array.isArray(payload?.courses) ? payload.courses : [];
+
+        const normalized: CourseOption[] = rawCourses.map((course) => ({
+          id: course.courseId,
+          title: course.title,
+        }));
+
+        if (isActive) {
+          setCourses(normalized);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error(error);
+        if (isActive) {
+          setCourseListError("Unable to load courses.");
+          setCourses([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setCoursesLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  // ========================================
+  // RENDER: Page layout and content
+  // - Top nav tabs
+  // - Details form
+  // - Questions list + actions
+  // ========================================
   return (
     <div className="min-h-screen bg-white">
+      {/* ---------- Top navigation tabs ---------- */}
       <nav className="border-b border-gray-200">
         <div className="mx-auto flex max-w-4xl justify-center gap-12 px-6">
           {tabs.map((tab) => (
@@ -124,7 +248,11 @@ export default function QuizCreatePage() {
 
       <main className="mx-auto w-full max-w-4xl px-6 py-12">
         {activeTab === "details" ? (
+          // ========================================
+          // DETAILS TAB: Quiz metadata form
+          // ========================================
           <form className="space-y-8" onSubmit={handleSaveQuiz}>
+            {/* Quiz name */}
             <div>
               <label htmlFor="quiz-name" className="text-sm font-semibold text-gray-700">
                 Quiz Name
@@ -139,20 +267,7 @@ export default function QuizCreatePage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="quiz-instructions" className="text-sm font-semibold text-gray-700">
-                Quiz Instructions
-              </label>
-              <textarea
-                id="quiz-instructions"
-                rows={6}
-                placeholder="Enter instructions"
-                value={instructions}
-                onChange={(event) => setInstructions(event.target.value)}
-                className="mt-2 w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-              />
-            </div>
-
+            {/* System prompt for AI */}
             <div>
               <label htmlFor="system-prompt" className="text-sm font-semibold text-gray-700">
                 Enter system prompt for AI
@@ -167,6 +282,66 @@ export default function QuizCreatePage() {
               />
             </div>
 
+            {/* Access code */}
+            <div>
+              <label htmlFor="access-code" className="text-sm font-semibold text-gray-700">
+                Access Code
+              </label>
+              <input
+                id="access-code"
+                type="text"
+                placeholder="Enter access code"
+                value={accessCode}
+                onChange={(event) => setAccessCode(event.target.value)}
+                className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+              />
+            </div>
+
+            {/* Course selection + search */}
+            <div>
+              <label htmlFor="course-id" className="text-sm font-semibold text-gray-700">
+                Course
+              </label>
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  placeholder="Search courses"
+                  value={courseSearchTerm}
+                  onChange={(event) => setCourseSearchTerm(event.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                />
+                <select
+                  id="course-id"
+                  value={courseId}
+                  onChange={(event) => setCourseId(event.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  required
+                  disabled={isCoursesLoading || (!!courseListError && !courses.length)}
+                >
+                  <option value="">Select a course</option>
+                  {visibleCourses.map((course) => (
+                    <option key={course.id} value={String(course.id)}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {isCoursesLoading && (
+                <p className="mt-1 text-xs text-gray-500">Loading courses...</p>
+              )}
+              {courseListError && (
+                <p className="mt-1 text-xs text-red-600">{courseListError}</p>
+              )}
+              {!isCoursesLoading &&
+                !courseListError &&
+                visibleCourses.length === 0 && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    No courses match your search.
+                  </p>
+                )}
+            </div>
+
+            {/* Form actions */}
             <div className="flex justify-end gap-3 pt-4">
               <button
                 type="button"
@@ -184,26 +359,40 @@ export default function QuizCreatePage() {
             </div>
           </form>
         ) : (
+          // ========================================
+          // QUESTIONS TAB: List of questions + actions
+          // ========================================
           <div className="space-y-10">
-            {questions.map((question) => (
-              <QuizCardInstructor
-                key={question.id}
-                question={question}
-                onDelete={handleDeleteQuestion}
-                onEdit={(selected) => {
-                  setEditingQuestion(selected);
-                  setQuestionModalOpen(true);
-                }}
-              />
-            ))}
+            {/* Error banner for question operations */}
+            {questionsError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {questionsError}
+              </div>
+            )}
 
+            {/* Loading state for questions */}
+            {isLoadingQuestions ? (
+              <div className="text-center text-sm text-gray-500">Loading questions...</div>
+            ) : (
+              <>
+                {/* Existing questions list */}
+                {questions.map((question, index) => (
+                  <QuizCardInstructor
+                    key={question.id}
+                    question={question}
+                    position={index + 1}
+                    onDelete={handleDeleteQuestion}
+                    onEdit={() => openEditQuestionModal(question)}
+                  />
+                ))}
+              </>
+            )}
+
+            {/* Actions: New question & Find questions (future) */}
             <div className="flex justify-center gap-4 pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  setEditingQuestion(null);
-                  setQuestionModalOpen(true);
-                }}
+                onClick={openNewQuestionModal}
                 className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
               >
                 <span className="text-base">＋</span>
@@ -221,25 +410,20 @@ export default function QuizCreatePage() {
         )}
       </main>
 
+      {/* ========================================
+         QUESTION MODAL
+         - Handles create and update flows for questions
+         ======================================== */}
       {isQuestionModalOpen && (
         <QuizQuestionInstructor
           nextId={nextQuestionId}
           initialQuestion={editingQuestion}
-          onCancel={() => {
-            setQuestionModalOpen(false);
-            setEditingQuestion(null);
-          }}
-          onSave={(question) => {
-            setQuestions((previous) => {
-              const exists = previous.some((item) => item.id === question.id);
-              return exists
-                ? previous.map((item) => (item.id === question.id ? question : item))
-                : [...previous, question];
-            });
-            setQuestionModalOpen(false);
-            setEditingQuestion(null);
+          onCancel={closeQuestionModal}
+          onSave={async (question, { isNew }) => {
+            await handleQuestionSave(question, { isNew });
             setActiveTab("questions");
           }}
+          displayNumber={modalQuestionNumber}
         />
       )}
     </div>

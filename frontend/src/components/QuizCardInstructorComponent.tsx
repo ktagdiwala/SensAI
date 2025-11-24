@@ -10,23 +10,33 @@ export type InstructorQuestion = {
   id: number;
   title: string;
   description: string;
+  prompt?: string | null;
   points: number;
   choices: InstructorChoice[];
   type?: "true_false" | "multiple_choice";
   correctChoiceId?: string;
+  isPersisted?: boolean;
 };
 
 type QuizCardInstructorProps = {
   question: InstructorQuestion;
+  position?: number;
   onDelete?: (id: number) => void;
   onEdit?: (question: InstructorQuestion) => void;
 };
 
-export default function QuizCardInstructor({ question, onDelete, onEdit }: QuizCardInstructorProps) {
+export default function QuizCardInstructor({ question, position, onDelete, onEdit }: QuizCardInstructorProps) {
+  const heading =
+    typeof position === "number"
+      ? `Question ${position}`
+      : question.title?.trim().length
+      ? question.title
+      : `Question ${question.id}`;
+
   return (
     <article className="border border-gray-300 bg-white shadow-sm">
       <header className="flex items-center justify-between border-b border-gray-300 bg-gray-100 px-4 py-2">
-        <h2 className="text-lg font-semibold text-gray-800">{question.title}</h2>
+        <h2 className="text-lg font-semibold text-gray-800">{heading}</h2>
         <div className="flex items-center gap-3 text-gray-500">
           <button
             type="button"

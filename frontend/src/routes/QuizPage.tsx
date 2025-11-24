@@ -1,132 +1,200 @@
 // Parent component (e.g., a page or a quiz container)
 // For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
+import { useAuth } from "../authentication/AuthContext";
 
-// Example True/False question
-const questions: QuestionData[] = [
-    {
-        id: "1",
-        description: "Which planet is commonly referred to as the Red Planet?",
-        choices: [
-            { id: "A", label: "Earth" },
-            { id: "B", label: "Mars" },
-            { id: "C", label: "Venus" },
-            { id: "D", label: "Jupiter" },
-        ],
-        points: 1,
-    },
-    {
-        id: "2",
-        description: "What is the derivative of x² with respect to x?",
-        choices: [
-            { id: "A", label: "x" },
-            { id: "B", label: "2x" },
-            { id: "C", label: "x²" },
-            { id: "D", label: "2" },
-        ],
-        points: 1,
-    },
-    {
-        id: "3",
-        description: "Which gas do plants primarily absorb during photosynthesis?",
-        choices: [
-            { id: "A", label: "Oxygen" },
-            { id: "B", label: "Nitrogen" },
-            { id: "C", label: "Carbon Dioxide" },
-            { id: "D", label: "Hydrogen" },
-        ],
-        points: 1,
-    },
-    {
-        id: "4",
-        description: "True or False: The Pacific Ocean is the largest ocean on Earth.",
-        choices: [
-            { id: "A", label: "True" },
-            { id: "B", label: "False" },
-        ],
-        points: 1,
-    },
-    {
-        id: "5",
-        description: "True or False: Sound travels faster in air than in water.",
-        choices: [
-            { id: "A", label: "True" },
-            { id: "B", label: "False" },
-        ],
-        points: 1,
-    },
-];
+const API_BASE_URL = "http://localhost:3000/api";
 
-//REMOVE THIS AFTER IMPLEMENTING VALIDATION FUNCTION IN BACKEND
-// DEV-ONLY mock
-const correctAnswers: Record<string, string> = {
-    "1": "B", // Mars is known as the Red Planet.
-    "2": "B", // d/dx (x²) = 2x.
-    "3": "C", // Plants absorb CO₂.
-    "4": "A", // Pacific Ocean is the largest.
-    "5": "B", // Sound travels faster in water than in air.
-};
+async function getQuestions({quizId,accessCode,}: {
+    quizId?: string;
+    accessCode?: string;
+}) {
+    if (!quizId || !accessCode) {
+        console.warn("Missing quizId or accessCode.");
+        return null;
+    }
 
-async function mockValidate({
-    questionId,
-    choiceId,
-    studentId,
-}: {
-    questionId: string;
-    choiceId: string;
-    studentId?: string;
-}): Promise<AnswerFeedback> {
-    const correct = correctAnswers[questionId] === choiceId;
-    return {
-        correct,
-        explanation: correct ? "Nice job!" : "Review the lecture notes for this topic.",
-    };
+    try {
+        const res = await fetch(
+            `${API_BASE_URL}/question/quiz/${encodeURIComponent(quizId)}/accessCode/${encodeURIComponent(accessCode)}`,
+            {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                credentials: "include",
+            }
+        );
+
+        const rawBody = await res.text();
+        console.log("Quiz API response (raw):", rawBody);
+
+        if (!res.ok) throw new Error("Failed to load questions.");
+
+        const data = JSON.parse(rawBody);
+        console.log("Loaded quiz questions:", data);
+        return data;
+    } catch (err) {
+        console.error("Unable to fetch quiz questions:", err);
+        return null;
+    }
 }
+
 
 export default function QuizPage() {
     const [answers, setAnswers] = useState<Record<string, string>>({});
-    const quizId = "abc123"; // TODO: get from route params
-    const studentId = "student-42"; // TODO: get from auth/user context
+    const [questions, setQuestions] = useState<QuestionData[]>([]);
+    const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
+    const { user } = useAuth();
+    const navigate = useNavigate();               
 
+    const studentId = user?.id ? String(user.id) : undefined;
+
+    useEffect(() => {
+        if (!quizId || !accessCode) return;
+
+        getQuestions({ quizId, accessCode }).then((data) => {
+            const rows = data?.questions ?? [];
+            type QuizApiQuestion = {
+                questionId: string | number;
+                title?: string | null;
+                options?: string[] | null;
+            }
+
+            const typedRows: QuizApiQuestion[] = rows as QuizApiQuestion[];
+
+            setQuestions(
+                typedRows.map((row) => ({
+                    id: String(row.questionId),
+                    description: row.title ?? "",
+                    points: 1,
+                    choices: (row.options ?? []).map((label, idx) => ({
+                        id: `choice-${row.questionId}-${idx}`,
+                        label,
+                    })),
+                }))
+            );
+        });
+    }, [quizId, accessCode]);
+
+
+    
     async function submitQuiz() {
         if (!confirm("Are you sure you want to submit this quiz?")) return;
 
-        const payload = questions.map((q) => ({
-            questionId: q.id,
-            answer: answers[q.id] ?? "null",
-        }));
+        if (!quizId) {
+            alert("Missing quiz information.");
+            return;
+        }
+
+        // Build questionArray with questionId + givenAnswer(label) + numMsgs
+        const questionArray = questions.map((q) => {
+            const choiceId = answers[q.id];           // stored selected choice id
+            const choice = q.choices.find(c => c.id === choiceId);
+            const givenAnswer = choice?.label ?? "";  // send label text (or empty if none)
+            return {
+                questionId: q.id,
+                givenAnswer,
+                numMsgs: 0,
+            };
+        }).filter(q => q.givenAnswer !== "");        // optional: only include answered
+
+        if (questionArray.length === 0) {
+            alert("You have not answered any questions.");
+            return;
+        }
 
         try {
-            const res = await fetch(`/api/quiz/${encodeURIComponent(quizId)}/submit`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    studentId,          
-                    answers: payload,
-                }),
-            });
-            if (!res.ok) throw new Error("Submission failed");
+            const res = await fetch(
+                `${API_BASE_URL}/attempt/submit-quiz`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                        quizId,
+                        questionArray,
+                    }),
+                }
+            );
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || "Submission failed");
+            }
+
             alert("Quiz submitted.");
+            navigate("/student");       
         } catch (err) {
-            console.error(err);
+            console.error("Quiz submission failed", err);
             alert("Could not submit quiz.");
         }
     }
 
+    const submitAnswer = async ({
+        questionId,
+        choiceId,
+    }: {
+        questionId: string;
+        choiceId: string;
+        studentId?: string;
+    }): Promise<AnswerFeedback> => {
+        if (!quizId) {
+            return { correct: false, explanation: "Quiz not loaded yet." };
+        }
+
+        // Find the question and choice so we can send the actual answer text
+        const question = questions.find(q => q.id === questionId);
+        const choice = question?.choices.find(c => c.id === choiceId);
+        const givenAns = choice?.label ?? choiceId; // fall back to id if label missing
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/attempt/submit`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({
+                    quizId,
+                    questionId,
+                    givenAns,
+                    numMsgs: 0,
+                }),
+            });
+
+            if (!res.ok) {
+                const msg = await res.text();
+                throw new Error(msg || "Validation failed");
+            }
+
+            const data = await res.json();
+            return {
+                correct: !!data?.isCorrect,
+                explanation: data?.message,
+            };
+        } catch (err) {
+            console.error("Answer validation failed", err);
+            return {
+                correct: false,
+                explanation: "Unable to validate answer. Please retry.",
+            };
+        }
+    };
+
     return (
         <div>
-            {questions.map((q) => (
+            {questions.map((q, idx) => (
                 <QuestionCard
                     key={q.id}
                     data={q}
-                    validate={mockValidate}
+                    validate={submitAnswer}
                     selected={answers[q.id] ?? null}
                     onSelect={(choiceId) =>
                         setAnswers((prev) => ({ ...prev, [q.id]: choiceId }))
                     }
                     studentId={studentId}
                     lockAfterSubmit={true}
+                    displayNumber={idx + 1}
                 />
             ))}
 

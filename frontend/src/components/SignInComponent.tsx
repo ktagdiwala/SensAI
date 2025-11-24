@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../authentication/AuthContext';
 
 // TODO: Update endpoint when backend is deployed for production
 const SIGNIN_ENDPOINT = "http://localhost:3000/api/login";
@@ -17,6 +18,7 @@ type SignInProps = {
 
 export default function SignIn({ signInType, onClose }: SignInProps) {
     const navigate = useNavigate();
+    const { setUser } = useAuth();
     const [formData, setFormData] = useState<SignInForm>({
         email: "",
         password: "",
@@ -60,17 +62,13 @@ export default function SignIn({ signInType, onClose }: SignInProps) {
 
             const data = await response.json();
             setSuccessMessage("Login successful! Redirecting...");
-            
-            // Store userId, and userRole, then redirect after 2 seconds
+            setUser({ id: data.userId, role: data.userRole });
             setTimeout(() => {
-                localStorage.setItem('userId', data.userId);
-                localStorage.setItem('userRole', data.userRole);
                 setFormData({
                     email: "",
                     password: "",
                 });
                 onClose();
-                // Redirect to the URL specified by the backend
                 navigate(data.redirectUrl);
             }, 2000);
         } catch (error) {

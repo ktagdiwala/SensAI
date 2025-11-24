@@ -18,7 +18,7 @@ router.post('/submit', verifySessionStudent, async (req, res) => {
 	}
 
 	try{
-		const {insertId, isCorrect} = await recordQuestionAttempt(userId, quizId, questionId, givenAns, numMsgs);
+		const { insertId, isCorrect } = await recordQuestionAttempt(userId, questionId, quizId, givenAns, numMsgs);
 		return res.status(201).json({message: 'Question attempt recorded.', attemptId: insertId, isCorrect});
 	}catch(error){
 		return res.status(500).json({message: 'Error recording question attempt.'});
