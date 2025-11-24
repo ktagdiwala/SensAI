@@ -8,3 +8,5 @@ Ensure the `.env` file is configured:
 - With SALT_ROUNDS for password hashing.
 - It should be in the backend folder and added to `.gitignore` to prevent sensitive information from being committed.
 - FRONTEND_URL for CORS configuration (`http://localhost:5173` default for local development, adjust for production).
+- GEMINI_API_KEY for SensAI chatbot to work. Create an API key at https://aistudio.google.com/app/api-keys
+ 
