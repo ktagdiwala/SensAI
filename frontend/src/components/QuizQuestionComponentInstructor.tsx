@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import TrashIcon from "../assets/Trash.svg";
 import type { InstructorQuestion } from "./QuizCardInstructorComponent";
 
@@ -37,8 +37,9 @@ const buildDefaultChoices = (type: QuestionType): ChoiceDraft[] => {
 type QuizCreateQuestionProps = {
   nextId: number;
   onCancel: () => void;
-  onSave: (question: InstructorQuestion) => void;
+  onSave: (question: InstructorQuestion, options: { isNew: boolean }) => Promise<void> | void;
   initialQuestion?: InstructorQuestion | null;
+  displayNumber: number;
 };
 
 export default function QuizQuestionInstructor({
@@ -46,12 +47,14 @@ export default function QuizQuestionInstructor({
   onCancel,
   onSave,
   initialQuestion,
+  displayNumber,
 }: QuizCreateQuestionProps) {
   const isEditing = Boolean(initialQuestion);
   const [questionType, setQuestionType] = useState<QuestionType>(
     initialQuestion?.type ?? "true_false",
   );
   const [description, setDescription] = useState(initialQuestion?.description ?? "");
+  const [questionPrompt, setQuestionPrompt] = useState(initialQuestion?.prompt ?? "");
   const [points, setPoints] = useState(initialQuestion ? String(initialQuestion.points) : "1");
   const [choices, setChoices] = useState<ChoiceDraft[]>(() =>
     initialQuestion
@@ -63,15 +66,38 @@ export default function QuizQuestionInstructor({
       : buildDefaultChoices("true_false"),
   );
   const [error, setError] = useState<string | null>(null);
-  const hasInitializedChoicesRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!hasInitializedChoicesRef.current) {
-      hasInitializedChoicesRef.current = true;
+    if (initialQuestion) {
+      setQuestionType(initialQuestion.type ?? "true_false");
+      setDescription(initialQuestion.description ?? "");
+      setQuestionPrompt(initialQuestion.prompt ?? "");
+      setPoints(initialQuestion.points != null ? String(initialQuestion.points) : "1");
+      setChoices(
+        initialQuestion.choices.map((choice) => ({
+          id: choice.id,
+          label: choice.label,
+          isCorrect: choice.id === initialQuestion.correctChoiceId,
+        })),
+      );
+      setError(null);
       return;
     }
-    setChoices(buildDefaultChoices(questionType));
-  }, [questionType]);
+
+    // reset for new question
+    setQuestionType("true_false");
+    setDescription("");
+    setQuestionPrompt("");
+    setPoints("1");
+    setChoices(buildDefaultChoices("true_false"));
+    setError(null);
+  }, [initialQuestion]);
+
+  function handleQuestionTypeChange(newType: QuestionType) {
+    setQuestionType(newType);
+    setChoices(buildDefaultChoices(newType));
+  }
 
   function handleChoiceLabelChange(id: string, label: string) {
     setChoices((prev) =>
@@ -104,16 +130,18 @@ export default function QuizQuestionInstructor({
 
   function resetForm() {
     setDescription("");
+    setQuestionPrompt("");
     setPoints("1");
     setQuestionType("true_false");
     setChoices(buildDefaultChoices("true_false"));
     setError(null);
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
+    const trimmedPrompt = questionPrompt.trim();
     const trimmedDescription = description.trim();
     if (!trimmedDescription) {
       setError("Question text is required.");
@@ -142,19 +170,34 @@ export default function QuizQuestionInstructor({
       return;
     }
 
-    onSave({
+    const payload: InstructorQuestion = {
       id: initialQuestion?.id ?? nextId,
-      title: initialQuestion?.title ?? `Question ${initialQuestion?.id ?? nextId}`,
+      title: trimmedDescription,
       description: trimmedDescription,
+      prompt: trimmedPrompt.length > 0 ? trimmedPrompt : "null",
       points: parsedPoints,
       choices: normalizedChoices.map(({ id, label }) => ({ id, label })),
       type: questionType,
       correctChoiceId: correctChoice.id,
-    });
+      isPersisted: initialQuestion?.isPersisted,
+    };
 
-    if (isEditing) return;
+    try {
+      setIsSubmitting(true);
+      await Promise.resolve(onSave(payload, { isNew: !isEditing }));
+    } catch (saveError) {
+      const message =
+        saveError instanceof Error ? saveError.message : "Unable to save question.";
+      setError(message);
+      setIsSubmitting(false);
+      return;
+    }
 
-    resetForm();
+    setIsSubmitting(false);
+
+    if (!isEditing) {
+      resetForm();
+    }
   }
 
   return (
@@ -162,15 +205,11 @@ export default function QuizQuestionInstructor({
       <div className="w-full max-w-4xl rounded-2xl border border-gray-200 bg-white shadow-xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           <header className="flex flex-wrap items-center gap-4 border-b border-gray-200 px-6 py-4">
-            <h3 className="text-lg font-semibold text-gray-800">
-              {isEditing
-                ? initialQuestion?.title ?? `Question ${initialQuestion?.id ?? ""}`
-                : `Question ${nextId}`}
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-800">{`Question ${displayNumber}`}</h3>
 
             <select
               value={questionType}
-              onChange={(event) => setQuestionType(event.target.value as QuestionType)}
+              onChange={(event) => handleQuestionTypeChange(event.target.value as QuestionType)}
               className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
             >
               {questionTypeOptions.map((option) => (
@@ -205,7 +244,24 @@ export default function QuizQuestionInstructor({
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               className="mt-2 w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-              placeholder="Type the question prompt here..."
+              placeholder="Type the question text here..."
+            />
+          </div>
+
+          <div className="px-6">
+            <p className="text-sm text-gray-600">
+              Optionally add instructions or context to show with this question.
+            </p>
+
+            <label className="mt-4 block text-sm font-semibold text-gray-700">
+              Prompt (optional)
+            </label>
+            <textarea
+              rows={5}
+              value={questionPrompt}
+              onChange={(event) => setQuestionPrompt(event.target.value)}
+              className="mt-2 w-full resize-none rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+              placeholder="Add optional guidance for the question..."
             />
           </div>
 
@@ -226,9 +282,7 @@ export default function QuizQuestionInstructor({
                       onChange={() => handleMarkCorrect(choice.id)}
                       className="h-4 w-4 accent-sky-500"
                     />
-                    {index === 0 && questionType === "true_false"
-                      ? "Correct Answer"
-                      : "Possible Answer"}
+                    Possible Answer
                   </label>
 
                   <input
@@ -285,9 +339,10 @@ export default function QuizQuestionInstructor({
             </button>
             <button
               type="submit"
-              className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
+              disabled={isSubmitting}
+              className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-sky-400"
             >
-              Save Question
+              {isSubmitting ? "Saving..." : "Save Question"}
             </button>
           </footer>
         </form>

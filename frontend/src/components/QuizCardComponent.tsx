@@ -21,6 +21,7 @@ type QuestionCardProps = {
     selected?: string | null;
     onSelect?: (choiceId: string) => void;
     studentId?: string;
+    displayNumber?: number;
 };
 
 export default function QuestionCard({
@@ -30,6 +31,7 @@ export default function QuestionCard({
     selected: selectedProp = null,
     onSelect,
     studentId,
+    displayNumber,
 }: QuestionCardProps) {
     const [selected, setSelected] = useState<string | null>(selectedProp);
     const [submitting, setSubmitting] = useState(false);
@@ -68,7 +70,9 @@ export default function QuestionCard({
                     
                     {/**Header */}
                     <div className="flex justify-between items-center bg-gray-100 -mx-4 -mt-4 px-4 py-2 border-b border-canvas-outline">
-                        <h2 className="m-0 text-lg font-semibold">Question {data.id} </h2>
+                        <h2 className="m-0 text-lg font-semibold">
+                            Question {displayNumber ?? data.id}
+                        </h2>
                         
                         <div className="flex gap-x-3">
                             <img
@@ -137,12 +141,13 @@ export default function QuestionCard({
                 </div>
             </div>
 
-            {/* Chat Component (shown on the right) */}
-            {isChatOpen && (
-                <div className="ml-6 w-100">
-                    <ChatComponent onClose={() => setIsChatOpen(false)} />
-                </div>
-            )}
+
+            <div
+                className={`ml-6 w-100 ${isChatOpen ? "" : "hidden"}`}
+                aria-hidden={!isChatOpen}
+            >
+                <ChatComponent onClose={() => setIsChatOpen(false)} />
+            </div>
         </div>
     );
 }
