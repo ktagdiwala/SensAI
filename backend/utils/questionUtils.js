@@ -74,6 +74,10 @@ async function getQuestionById(questionId){
 	const sql='SELECT * FROM question WHERE questionId = ?';
 	try {
 		const [result] = await pool.query(sql, [questionId]);
+		if(result.length === 0){
+			console.error("Question not found for id: ", questionId);
+			return null;
+		}
 		return result[0];
 	} catch (error) {
 		console.error("Error retrieving question: ", error);

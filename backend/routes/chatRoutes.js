@@ -1,17 +1,16 @@
 const {getResponse} = require('../utils/geminiUtils');
+const {verifySession} = require('../middleware/sessionMiddleware');
 const router = require('express').Router();
 
-// Example function to generate a response using Gemini API
-// GET /chat
-// router.get('/chat', verifySession, async (req, res) => {
-router.get('/gemini', async (req, res) => {
-	// get the prompt from the body
-	const { prompt } = req.body;
-	if (!prompt) {
-		return res.status(400).json({ message: 'Prompt is required.' });
+// Generates a response using Gemini API
+router.get('/gemini', verifySession, async (req, res) => {
+	// get the studentMessage, quizId, questionId, and chatHistory from the body
+	const { studentMessage, quizId, questionId, chatHistory } = req.body;
+	if (!studentMessage || !quizId || !questionId) {
+		return res.status(400).json({ message: 'Student message, quiz ID, and question ID are required.' });
 	}
 	try {
-		const response = await getResponse(prompt);
+		const response = await getResponse(studentMessage, quizId, questionId, chatHistory);
 		res.json({ response });
 	} catch (error) {
 		res.status(500).json({ message: 'Error generating response.' });
