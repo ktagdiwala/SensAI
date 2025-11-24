@@ -15,6 +15,7 @@ const registerRoutes = require('./routes/registerRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const attemptRoutes = require('./routes/attemptRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -51,6 +52,7 @@ app.use('/api', registerRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/question', questionRoutes);
 app.use('/api/attempt', attemptRoutes);
+app.use('/api/chat', chatRoutes);
 
 // === Start the Server ===
 app.listen(PORT, () => {
