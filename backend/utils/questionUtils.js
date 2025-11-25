@@ -7,7 +7,8 @@ function parseAndShuffleOptions(result){
 		const {correctAns, otherAns} = result[k];
 		let options = [];
 		options.push(correctAns);
-		const otherOptions = otherAns.split(',').map(opt => opt.trim());
+		// delimiter for otherAns is {|}
+		const otherOptions = otherAns.split('{|}').map(opt => opt.trim());
 		options = options.concat(otherOptions);
 
 		// Shuffle options
@@ -73,6 +74,10 @@ async function getQuestionById(questionId){
 	const sql='SELECT * FROM question WHERE questionId = ?';
 	try {
 		const [result] = await pool.query(sql, [questionId]);
+		if(result.length === 0){
+			console.error("Question not found for id: ", questionId);
+			return null;
+		}
 		return result[0];
 	} catch (error) {
 		console.error("Error retrieving question: ", error);

@@ -60,6 +60,10 @@ async function getQuizById(quizId){
 	const sql = 'SELECT * FROM quiz WHERE quizId = ?';
 	try{
 		const[result] = await pool.query(sql, [quizId]);
+		if(result.length === 0){
+			console.error("Quiz not found for id: ", quizId);
+			return null;
+		}
 		return result[0];
 	} catch (error) {
 		console.error("Error getting quiz by id: ", error);
@@ -76,6 +80,10 @@ async function getQuizByIdAndAccessCode(quizId, accessCode){
 	const sql = 'SELECT * FROM quiz WHERE quizId = ? AND accessCode = ?';
 	try{
 		const[result] = await pool.query(sql, [quizId, accessCode]);
+		if(result.length === 0){
+			console.error("Quiz not found for id and access code: ", quizId, accessCode);
+			return null;
+		}
 		return result[0];
 	} catch (error) {
 		console.error("Error getting quiz by id and access code: ", error);

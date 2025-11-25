@@ -12,33 +12,46 @@ function isFloat(str) {
 
 // === Utility Functions ===
 
-/** checkAnswer
+/** getCorrectAns
+ * Used by checkAnswer to get the correct answer from the database
+ * Also used by geminiUtils to provide the correct answer to the AI
  * @param {int} questionId
- * @param {string} givenAnswer
  */
-async function checkAnswer(questionId, givenAns){
+async function getCorrectAns(questionId){
 	const sql = 'SELECT correctAns FROM question WHERE questionId = ?';
 	try{
 		const [rows] = await pool.query(sql, [questionId]);
 		if(rows.length === 0){
 			console.error("Question not found");
-			return 0;
+			return null;
 		}
-		const {correctAns} = rows[0];
-		if(isFloat(correctAns) && isFloat(givenAns)){
-			// Compare as decimals
-			return parseFloat(correctAns) === parseFloat(givenAns) ? 1 : 0;
-		}else if(isInt(correctAns) && isInt(givenAns)){
-			// Compare as integers
-			return parseInt(correctAns) === parseInt(givenAns) ? 1 : 0;
-		}else{
-			// Compare as strings (case-insensitive)
-			return correctAns.trim().toLowerCase() === givenAns.trim().toLowerCase() ? 1 : 0;
-		}
+		return rows[0].correctAns;
+	}catch(error){
+		console.error("Error retrieving correct answer: ", error);
+		return null;
 	}
-	catch(error){
-		console.error("Error checking answer: ", error);
+}
+
+/** checkAnswer
+ * @param {int} questionId
+ * @param {string} givenAnswer
+ */
+async function checkAnswer(questionId, givenAns){
+	const correctAns = await getCorrectAns(questionId);
+	if(correctAns === null){
+		console.error("Could not retrieve correct answer");
 		return 0;
+	}
+
+	if(isFloat(correctAns) && isFloat(givenAns)){
+		// Compare as decimals
+		return parseFloat(correctAns) === parseFloat(givenAns) ? 1 : 0;
+	}else if(isInt(correctAns) && isInt(givenAns)){
+		// Compare as integers
+		return parseInt(correctAns) === parseInt(givenAns) ? 1 : 0;
+	}else{
+		// Compare as strings (case-insensitive)
+		return correctAns.trim().toLowerCase() === givenAns.trim().toLowerCase() ? 1 : 0;
 	}
 }
 
@@ -75,13 +88,16 @@ async function recordQuestionAttempt(userId, questionId, quizId, givenAnswer, nu
  */
 	async function recordQuizAttempt(userId, quizId, questionArray){
 		let score = 0;
+		let questionFeedback = [];
 		for(const question of questionArray){
 			const { questionId, givenAnswer, numMsgs } = question;
 			const { insertId, isCorrect } = await recordQuestionAttempt(userId, questionId, quizId, givenAnswer, numMsgs);
+			questionFeedback.push({ questionId, isCorrect });
 			score += isCorrect;
 	}
 	return {
 		success: true,
+		questionFeedback: questionFeedback,
 		totalQuestions: questionArray.length,
 		score: score
 	}
@@ -176,6 +192,7 @@ async function getStudentQuizAttempts(userId){
 }
 
 module.exports = {
+	getCorrectAns,
 	checkAnswer,
 	recordQuestionAttempt,
 	recordQuizAttempt,
