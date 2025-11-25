@@ -30,8 +30,8 @@ describe('Student E2E: Signup → Login → Quiz → Submit → Verify', functio
       try {
         console.log(`Cleaning up test user ${testUserId}...`);
         
-        // Delete attempts first (foreign key constraint)
-        await new Promise((resolve, reject) => {
+        // Delete attempts first 
+        const attemptsResult = await new Promise((resolve, reject) => {
           const payload = JSON.stringify({ userId: testUserId });
           const opts = {
             hostname: 'localhost',
@@ -44,16 +44,18 @@ describe('Student E2E: Signup → Login → Quiz → Submit → Verify', functio
             },
           };
           const req = http.request(opts, (res) => {
-            res.on('data', () => {});
-            res.on('end', () => resolve());
+            let body = '';
+            res.on('data', (chunk) => body += chunk);
+            res.on('end', () => resolve({ status: res.statusCode, body }));
           });
           req.on('error', reject);
           req.write(payload);
           req.end();
         });
+        console.log(`Attempts cleanup: ${attemptsResult.status} - ${attemptsResult.body}`);
 
         // Delete user
-        await new Promise((resolve, reject) => {
+        const userResult = await new Promise((resolve, reject) => {
           const payload = JSON.stringify({ userId: testUserId });
           const opts = {
             hostname: 'localhost',
@@ -66,15 +68,17 @@ describe('Student E2E: Signup → Login → Quiz → Submit → Verify', functio
             },
           };
           const req = http.request(opts, (res) => {
-            res.on('data', () => {});
-            res.on('end', () => resolve());
+            let body = '';
+            res.on('data', (chunk) => body += chunk);
+            res.on('end', () => resolve({ status: res.statusCode, body }));
           });
           req.on('error', reject);
           req.write(payload);
           req.end();
         });
+        console.log(`User cleanup: ${userResult.status} - ${userResult.body}`);
 
-        console.log('✓ Test user cleaned up successfully');
+        console.log('Test user cleaned up successfully');
       } catch (err) {
         console.error('Failed to clean up test user:', err.message);
       }
@@ -215,7 +219,7 @@ describe('Student E2E: Signup → Login → Quiz → Submit → Verify', functio
         const quiz1Attempts = attempts.filter(a => String(a.quizId) === '1' || String(a.quiz_id) === '1');
         console.log(`Retry ${retry + 1}: Found ${attempts.length} total attempts (${quiz1Attempts.length} for quizId=1)`);
         if (quiz1Attempts.length >= numQuestions) {
-          console.log(`✓ Quiz submitted successfully - ${quiz1Attempts.length} attempt(s) recorded (expected ${numQuestions})`);
+          console.log(`Quiz submitted successfully - ${quiz1Attempts.length} attempt(s) recorded (expected ${numQuestions})`);
           // Store userId from first attempt for cleanup
           if (quiz1Attempts.length > 0) {
             testUserId = quiz1Attempts[0].userId || quiz1Attempts[0].user_id;
