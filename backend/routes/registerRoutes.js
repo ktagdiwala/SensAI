@@ -1,20 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/dbConnection');
-const bcrypt = require('bcrypt'); // For password hashing
+const {hashPassword} = require('../utils/userUtils');
 require('dotenv').config(); // Load environment variables
 
 // === Business Logic Functions ===
-
-/** hashPassword
-* Hashes a plaintext password for secure storage.
-* @param {string} plaintextPassword - The password to hash.
-* @returns {Promise<string>} The resulting password hash.
-*/
-async function hashPassword(plaintextPassword) {
-    const saltRounds = parseInt(process.env.SALT_ROUNDS) || 10; // Standard cost factor (higher is slower, more secure)
-    return await bcrypt.hash(plaintextPassword, saltRounds);
-}
 
 /** getRoleId
 * Determines roleId based on role string
