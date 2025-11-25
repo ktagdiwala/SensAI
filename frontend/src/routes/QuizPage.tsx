@@ -4,6 +4,7 @@ import QuestionCard, { type QuestionData, type AnswerFeedback } from "../compone
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
 import { useAuth } from "../authentication/AuthContext";
+import QuizSubmissions from "../components/QuizSubmissions";
 
 const API_BASE_URL = "http://localhost:3000/api";
 
@@ -46,6 +47,7 @@ async function getQuestions({quizId,accessCode,}: {
 export default function QuizPage() {
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [questions, setQuestions] = useState<QuestionData[]>([]);
+    const [showSubmissions, setShowSubmissions] = useState(false);
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();
     const navigate = useNavigate();               
@@ -124,8 +126,11 @@ export default function QuizPage() {
                 throw new Error(msg || "Submission failed");
             }
 
+            const data = await res.json();
+            console.log("Quiz submit result:", data);
+
             alert("Quiz submitted.");
-            navigate("/student");       
+
         } catch (err) {
             console.error("Quiz submission failed", err);
             alert("Could not submit quiz.");
@@ -204,6 +209,19 @@ export default function QuizPage() {
             >
                 Submit Quiz
             </button>
+
+            <button
+                className="bg-gray-200 text-gray-800 m-8 p-2 rounded-md"
+                onClick={() => setShowSubmissions((prev) => !prev)}
+            >
+                {showSubmissions ? "Hide" : "View"} Quiz Submissions
+            </button>
+
+            {showSubmissions && (
+                <div className="m-8">
+                    <QuizSubmissions />
+                </div>
+            )}
         </div>
     );
 }
