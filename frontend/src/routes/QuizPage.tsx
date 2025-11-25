@@ -48,6 +48,9 @@ export default function QuizPage() {
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [questions, setQuestions] = useState<QuestionData[]>([]);
     const [showSubmissions, setShowSubmissions] = useState(false);
+    const [submissionResults, setSubmissionResults] = useState<Record<string, boolean>>({});
+    const [quizSubmitted, setQuizSubmitted] = useState(false);
+    const [submissionSummary, setSubmissionSummary] = useState<{ score: number; total: number } | null>(null);
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();
     const navigate = useNavigate();               
@@ -129,6 +132,21 @@ export default function QuizPage() {
             const data = await res.json();
             console.log("Quiz submit result:", data);
 
+            const feedback = Array.isArray(data?.result?.questionFeedback)
+                ? data.result.questionFeedback
+                : [];
+            const mapped: Record<string, boolean> = {};
+            feedback.forEach((item: { questionId: string | number; isCorrect: number | boolean }) => {
+                mapped[String(item.questionId)] = !!item.isCorrect;
+            });
+
+            const totalQuestions = data?.result?.totalQuestions ?? questionArray.length;
+            const score = data?.result?.score ?? feedback.filter((f: any) => f?.isCorrect).length;
+
+            setSubmissionResults(mapped);
+            setQuizSubmitted(true);
+            setSubmissionSummary({ score, total: totalQuestions });
+
             alert("Quiz submitted.");
 
         } catch (err) {
@@ -200,8 +218,16 @@ export default function QuizPage() {
                     studentId={studentId}
                     lockAfterSubmit={true}
                     displayNumber={idx + 1}
+                    forceDisabled={quizSubmitted}
+                    finalResult={quizSubmitted ? submissionResults[q.id] ?? null : null}
                 />
             ))}
+
+            {quizSubmitted && submissionSummary && (
+                <div className="m-8 p-4 rounded-md border border-canvas-outline bg-green-50 text-green-900">
+                    Score: {submissionSummary.score} / {submissionSummary.total}
+                </div>
+            )}
 
             <button
                 className="bg bg-canvas-light-blue text-white m-8 p-4 rounded-md"
