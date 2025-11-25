@@ -88,13 +88,16 @@ async function recordQuestionAttempt(userId, questionId, quizId, givenAnswer, nu
  */
 	async function recordQuizAttempt(userId, quizId, questionArray){
 		let score = 0;
+		let questionFeedback = [];
 		for(const question of questionArray){
 			const { questionId, givenAnswer, numMsgs } = question;
 			const { insertId, isCorrect } = await recordQuestionAttempt(userId, questionId, quizId, givenAnswer, numMsgs);
+			questionFeedback.push({ questionId, isCorrect });
 			score += isCorrect;
 	}
 	return {
 		success: true,
+		questionFeedback: questionFeedback,
 		totalQuestions: questionArray.length,
 		score: score
 	}
