@@ -5,7 +5,9 @@ const API_BASE_URL = "http://localhost:3000/api";
 type QuizAttempt = {
     dateTime: string;
     quizId: number;
+    quizTitle?: string;
     questionId: number;
+    questionTitle?: string;
     isCorrect: 0 | 1;
     numMsgs: number | null;
 };
@@ -24,6 +26,7 @@ export default function QuizSubmissions() {
                 });
                 if (!res.ok) throw new Error("Failed to fetch quiz attempts.");
                 const data = await res.json();
+                console.log("Fetched quiz attempts:", data);
                 if (isMounted) {
                     setAttempts(data?.attempts ?? []);
                     setError(null);
@@ -48,18 +51,31 @@ export default function QuizSubmissions() {
         <div className="border rounded-md p-4">
             <h3 className="text-lg font-semibold mb-2">Previous Quiz Submissions</h3>
             <ul className="space-y-2">
-                {attempts.map((attempt) => (
-                    <li key={`${attempt.quizId}-${attempt.questionId}-${attempt.dateTime}`} className="border p-2 rounded">
-                        <p>Quiz ID: {attempt.quizId}</p>
-                        <p>Question ID: {attempt.questionId}</p>
-                        <p>Result: {attempt.isCorrect ? "Correct ✅" : "Incorrect ❌"}</p>
-                        <p>
-                            Submitted:{" "}
-                            {new Date(attempt.dateTime).toLocaleString()}
-                        </p>
-                        {attempt.numMsgs != null && <p>Chat exchanges: {attempt.numMsgs}</p>}
-                    </li>
-                ))}
+                {attempts.map((attempt) => {
+                    const questionTitle = attempt.questionTitle?.trim();
+                    const quizTitle = attempt.quizTitle?.trim();
+                    return (
+                        <li
+                            key={`${attempt.quizId}-${attempt.questionId}-${attempt.dateTime}`}
+                            className="border p-2 rounded"
+                        >
+                            <p className="font-semibold">
+                                Quiz: {quizTitle || `Quiz ID: ${attempt.quizId}`}
+                            </p>
+                            <p className="mt-1">
+                                Question: {questionTitle || `Question ID: ${attempt.questionId}`}
+                            </p>
+
+                            <p>Result: {attempt.isCorrect ? "Correct ✅" : "Incorrect ❌"}</p>
+                            <p>
+                                Submitted: {new Date(attempt.dateTime).toLocaleString()}
+                            </p>
+                            {attempt.numMsgs != null && (
+                                <p>Chat exchanges: {attempt.numMsgs}</p>
+                            )}
+                        </li>
+                    );
+                })}
             </ul>
         </div>
     );
