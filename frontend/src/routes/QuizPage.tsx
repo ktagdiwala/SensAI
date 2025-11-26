@@ -30,12 +30,12 @@ async function getQuestions({quizId,accessCode,}: {
         );
 
         const rawBody = await res.text();
-        console.log("Quiz API response (raw):", rawBody);
+        // console.log("Quiz API response (raw):", rawBody);
 
         if (!res.ok) throw new Error("Failed to load questions.");
 
         const data = JSON.parse(rawBody);
-        console.log("Loaded quiz questions:", data);
+        // console.log("Loaded quiz questions:", data);
         return data;
     } catch (err) {
         console.error("Unable to fetch quiz questions:", err);
@@ -130,7 +130,7 @@ export default function QuizPage() {
             }
 
             const data = await res.json();
-            console.log("Quiz submit result:", data);
+            // console.log("Quiz submit result:", data);
 
             const feedback = Array.isArray(data?.result?.questionFeedback)
                 ? data.result.questionFeedback

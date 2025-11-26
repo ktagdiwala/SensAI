@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import MainIcon from "../assets/MainIcon.svg"
 import CloseIcon from "../assets/xIcon.svg"
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api";
+const API_BASE_URL = "http://localhost:3000/api";
 
 type Message = {
     id: string,
@@ -21,6 +21,7 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
+    const chatSectionRef = useRef<HTMLDivElement>(null);
 
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setInput(event.target.value)
@@ -32,6 +33,13 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
         sendMessage();
     };
 
+    // Scroll to bottom when messages change
+    useEffect(() => {
+        if (chatSectionRef.current) {
+            chatSectionRef.current.scrollTop = chatSectionRef.current.scrollHeight;
+        }
+    }, [messages]);
+
     const sendMessage = async () => {
         if (!input.trim() || sending) return;
 
@@ -39,7 +47,6 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
         const timestamp = Date.now().toString();
 
         if (!quizId || !questionId) {
-            console.warn("Chat requires quizId and questionId.");
             setMessages((prev) => [
                 ...prev,
                 { id: `${timestamp}-user`, role: "user", content: trimmed },
@@ -67,7 +74,6 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
             if (!res.ok) throw new Error(await res.text());
 
             const data = await res.json();
-            console.log("Gemini chat response:", data);
 
             setMessages((prev) => [
                 ...prev,
@@ -78,7 +84,6 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
                 },
             ]);
         } catch (error) {
-            console.error("Failed to reach chat route:", error);
             setMessages((prev) => [
                 ...prev,
                 {
@@ -111,10 +116,11 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
                         </button>
                     </div>
 
-    
-
                     {/**Chat section */}
-                    <div className="flex-1 overflow-y-auto space-y-4 [scrollbar-width:thin] [scrollbar-color:#9ca3af_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-400">
+                    <div
+                        ref={chatSectionRef}
+                        className="flex-1 overflow-y-auto space-y-4 [scrollbar-width:thin] [scrollbar-color:#9ca3af_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-400"
+                    >
                         <div className="px-6 pb-1">
                             <div className="flex flex-col items-center gap-4 text-center">
                                 <img src={MainIcon} alt="SensAi" className="w-12 drop-shadow-2xl" />
