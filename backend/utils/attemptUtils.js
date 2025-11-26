@@ -63,7 +63,9 @@ async function checkAnswer(questionId, givenAns){
  * @param {int} numMsgs
  */
 async function recordQuestionAttempt(userId, questionId, quizId, givenAnswer, numMsgs){
-	const sql = 'INSERT INTO question_attempt (dateTime, userId, questionId, quizId, isCorrect, numMsgs) VALUES (?, ?, ?, ?, ?, ?)';
+	const sql = `INSERT INTO question_attempt 
+		(dateTime, userId, questionId, quizId, isCorrect, numMsgs) 
+		VALUES (?, ?, ?, ?, ?, ?)`;
 	const isCorrect = await checkAnswer(questionId, givenAnswer);
 	// Use now for dateTime
 	const dateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
@@ -107,7 +109,14 @@ async function recordQuestionAttempt(userId, questionId, quizId, givenAnswer, nu
  * @param {int} questionId
  */
 async function getAttemptsByQuestion(questionId){
-	const sql = 'SELECT * FROM question_attempt WHERE questionId = ?';
+	const sql = `		
+		SELECT dateTime, quiz.quizId AS quizId, question.questionId AS questionId, 
+			quiz.title AS quizTitle, question.title AS questionTitle, 
+			correctAns, otherAns, userId, isCorrect, numMsgs
+		FROM question_attempt 
+		JOIN quiz ON question_attempt.quizId = quiz.quizId 
+		JOIN question ON question_attempt.questionId = question.questionId
+		WHERE question.questionId = ?`;
 	try{
 		const [rows] = await pool.query(sql, [questionId]);
 		return rows;
@@ -121,7 +130,14 @@ async function getAttemptsByQuestion(questionId){
  * @param {int} quizId
  */
 async function getAttemptsByQuiz(quizId){
-	const sql = 'SELECT * FROM question_attempt WHERE quizId = ?';
+	const sql = `		
+		SELECT dateTime, quiz.quizId AS quizId, question.questionId AS questionId, 
+			quiz.title AS quizTitle, question.title AS questionTitle, 
+			correctAns, otherAns, userId, isCorrect, numMsgs
+		FROM question_attempt 
+		JOIN quiz ON question_attempt.quizId = quiz.quizId 
+		JOIN question ON question_attempt.questionId = question.questionId
+		WHERE quiz.quizId = ?`;
 	try{
 		const [rows] = await pool.query(sql, [quizId]);
 		return rows;
@@ -135,7 +151,14 @@ async function getAttemptsByQuiz(quizId){
  * @param {int} userId
  */
 async function getAttemptsByStudent(userId){
-	const sql = 'SELECT * FROM question_attempt WHERE userId = ?';
+	const sql = `
+		SELECT dateTime, quiz.quizId AS quizId, question.questionId AS questionId, 
+				quiz.title AS quizTitle, question.title AS questionTitle, 
+				correctAns, otherAns, userId, isCorrect, numMsgs
+		FROM question_attempt 
+		JOIN quiz ON question_attempt.quizId = quiz.quizId 
+		JOIN question ON question_attempt.questionId = question.questionId
+		WHERE userId = ?`;
 	try{
 		const [rows] = await pool.query(sql, [userId]);
 		return rows;
@@ -150,7 +173,13 @@ async function getAttemptsByStudent(userId){
  * @param {int} questionId
  */
 async function getAttemptsByStudentAndQuestion(userId, questionId){
-	const sql = 'SELECT * FROM question_attempt WHERE userId = ? AND questionId = ?';
+	const sql = `SELECT dateTime, quiz.quizId AS quizId, question.questionId AS questionId,
+			quiz.title AS quizTitle, question.title AS questionTitle, 
+			correctAns, otherAns, userId, isCorrect, numMsgs
+		FROM question_attempt 
+		JOIN quiz ON question_attempt.quizId = quiz.quizId 
+		JOIN question ON question_attempt.questionId = question.questionId
+		WHERE userId = ? AND question.questionId = ?`;
 	try{
 		const [rows] = await pool.query(sql, [userId, questionId]);
 		return rows;
@@ -165,7 +194,13 @@ async function getAttemptsByStudentAndQuestion(userId, questionId){
  * @param {int} quizId
  */
 async function getAttemptsByStudentAndQuiz(userId, quizId){
-	const sql = 'SELECT * FROM question_attempt WHERE userId = ? AND quizId = ?';
+	const sql = `SELECT dateTime, quiz.quizId AS quizId, question.questionId AS questionId,
+			quiz.title AS quizTitle, question.title AS questionTitle, 
+			correctAns, otherAns, userId, isCorrect, numMsgs
+		FROM question_attempt 
+		JOIN quiz ON question_attempt.quizId = quiz.quizId 
+		JOIN question ON question_attempt.questionId = question.questionId 
+		WHERE userId = ? AND quiz.quizId = ?`;
 	try{
 		const [rows] = await pool.query(sql, [userId, quizId]);
 		return rows;
@@ -181,12 +216,40 @@ async function getAttemptsByStudentAndQuiz(userId, quizId){
  * @param {int} userId
  */
 async function getStudentQuizAttempts(userId){
-	const sql = 'SELECT quizId, dateTime, COUNT(*) as questionCount FROM question_attempt WHERE userId = ? GROUP BY quizId, dateTime HAVING questionCount >= 2';
+	const sql = `SELECT quiz.quizId AS quizId, quiz.title AS quizTitle, dateTime, COUNT(*) as questionCount 
+		FROM question_attempt 
+		JOIN quiz ON question_attempt.quizId = quiz.quizId
+		JOIN question ON question_attempt.questionId = question.questionId
+		WHERE userId = ? GROUP BY quiz.quizId, dateTime 
+		HAVING questionCount >= 2`;
 	try{
 		const [rows] = await pool.query(sql, [userId]);
 		return rows;
 	}catch(error){
 		console.error("Error retrieving student quiz attempts: ", error);
+		return [];
+	}
+}
+
+/** getStudentQuestionAttemptsForQuiz
+ * Retrieves all question attempts for a student for a specific quiz at a specific dateTime
+ * @param {int} userId
+ * @param {int} quizId
+ * @param {string} dateTime
+ */
+async function getStudentQuestionAttemptsForQuiz(userId, quizId, dateTime){
+	const sql = `SELECT dateTime, quiz.quizId AS quizId, question.questionId AS questionId,
+			quiz.title AS quizTitle, question.title AS questionTitle, 
+			correctAns, otherAns, userId, isCorrect, numMsgs
+		FROM question_attempt
+		JOIN quiz ON question_attempt.quizId = quiz.quizId
+		JOIN question ON question_attempt.questionId = question.questionId
+		WHERE userId = ? AND quiz.quizId = ? AND dateTime = ?`;
+	try{
+		const [rows] = await pool.query(sql, [userId, quizId, dateTime]);
+		return rows;
+	}catch(error){
+		console.error("Error retrieving student question attempts for quiz: ", error);
 		return [];
 	}
 }
@@ -201,5 +264,6 @@ module.exports = {
 	getAttemptsByStudent,
 	getAttemptsByStudentAndQuestion,
 	getAttemptsByStudentAndQuiz,
-	getStudentQuizAttempts
+	getStudentQuizAttempts,
+	getStudentQuestionAttemptsForQuiz
 }
