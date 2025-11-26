@@ -1,6 +1,9 @@
 import { useState } from "react";
 import MainIcon from "../assets/MainIcon.svg"
 import CloseIcon from "../assets/xIcon.svg"
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000/api";
+
 type Message = {
     id: string,
     role: "user" | "ai",
@@ -9,12 +12,15 @@ type Message = {
 
 type ChatComponentProps = {
     onClose: () => void;
+    quizId?: string;
+    questionId: string;
 };
 
-export default function ChatComponent({ onClose }: ChatComponentProps) {
+export default function ChatComponent({ onClose, quizId, questionId }: ChatComponentProps) {
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
+    const [sending, setSending] = useState(false);
 
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setInput(event.target.value)
@@ -26,26 +32,64 @@ export default function ChatComponent({ onClose }: ChatComponentProps) {
         sendMessage();
     };
 
-    const sendMessage = () => {
-        if (!input.trim()) return;
+    const sendMessage = async () => {
+        if (!input.trim() || sending) return;
 
         const trimmed = input.trim();
         const timestamp = Date.now().toString();
 
-        const userMessage: Message = {
-            id: `${timestamp}-user`,
-            role: "user",
-            content: trimmed,
-        };
+        if (!quizId || !questionId) {
+            console.warn("Chat requires quizId and questionId.");
+            setMessages((prev) => [
+                ...prev,
+                { id: `${timestamp}-user`, role: "user", content: trimmed },
+                { id: `${timestamp}-ai`, role: "ai", content: "Chat is unavailable for this question." },
+            ]);
+            setInput("");
+            return;
+        }
 
-        const aiMessage: Message = {
-            id: `${timestamp}-ai`,
-            role: "ai",
-            content: `User said "${trimmed}"`,
-        };
+        const userMessage: Message = { id: `${timestamp}-user`, role: "user", content: trimmed };
+        const chatHistory = [...messages, userMessage].map((m) => `${m.role}: ${m.content}`).join("\n");
 
-        setMessages((prev) => [...prev, userMessage, aiMessage]);
+        setMessages((prev) => [...prev, userMessage]);
         setInput("");
+        setSending(true);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/chat/gemini`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ studentMessage: trimmed, quizId, questionId, chatHistory }),
+            });
+
+            if (!res.ok) throw new Error(await res.text());
+
+            const data = await res.json();
+            console.log("Gemini chat response:", data);
+
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: `${Date.now()}-ai`,
+                    role: "ai",
+                    content: data?.response ?? "No response from AI.",
+                },
+            ]);
+        } catch (error) {
+            console.error("Failed to reach chat route:", error);
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: `${Date.now()}-ai`,
+                    role: "ai",
+                    content: "Sorry, I couldn't reach the assistant. Please try again.",
+                },
+            ]);
+        } finally {
+            setSending(false);
+        }
     };
 
 
@@ -67,35 +111,37 @@ export default function ChatComponent({ onClose }: ChatComponentProps) {
                         </button>
                     </div>
 
-                    {/**Info section */}
-                    {/**TODO DECIDE TO KEEP THIS OR REMOVE IT */}
-                    <div className="px-6 pb-6">
-                        <div className="flex flex-col items-center gap-4 text-center">
-                            <img src={MainIcon} alt="SensAi" className="w-20 drop-shadow-2xl" />
-                            <p className="font-light text-gray-800">
-                                Ask me any questions you might have for Question ID
-                            </p>
-                        </div>
-                    </div>
+    
 
                     {/**Chat section */}
-                    <div className="flex-1 overflow-y-auto px-6 space-y-4 pb-6 [scrollbar-width:thin] [scrollbar-color:#9ca3af_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-400">
-                        {messages.map((m) => (
-                            <div
-                                key={m.id}
-                                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-                            >
-                                <div
-                                    className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                                        m.role === "user"
-                                            ? "bg-gray-100 text-gray-900"
-                                            : "bg-white text-gray-700 shadow"
-                                    }`}
-                                >
-                                    {m.content}
-                                </div>
+                    <div className="flex-1 overflow-y-auto space-y-4 [scrollbar-width:thin] [scrollbar-color:#9ca3af_transparent] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-400">
+                        <div className="px-6 pb-1">
+                            <div className="flex flex-col items-center gap-4 text-center">
+                                <img src={MainIcon} alt="SensAi" className="w-12 drop-shadow-2xl" />
+                                <p className="font-light text-gray-800 text-sm">
+                                    Ask me any questions you might have
+                                </p>
                             </div>
-                        ))}
+                        </div>
+
+                        <div className="px-6 space-y-4 pb-6">
+                            {messages.map((m) => (
+                                <div
+                                    key={m.id}
+                                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                                >
+                                    <div
+                                        className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                                            m.role === "user"
+                                                ? "bg-gray-100 text-gray-900"
+                                                : "bg-white text-gray-700 shadow"
+                                        }`}
+                                    >
+                                        {m.content}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     {/**Input section */}

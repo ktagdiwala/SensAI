@@ -220,6 +220,7 @@ export default function QuizPage() {
                     displayNumber={idx + 1}
                     forceDisabled={quizSubmitted}
                     finalResult={quizSubmitted ? submissionResults[q.id] ?? null : null}
+                    quizId={quizId}
                 />
             ))}
 

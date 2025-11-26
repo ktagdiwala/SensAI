@@ -24,6 +24,7 @@ type QuestionCardProps = {
     displayNumber?: number;
     forceDisabled?: boolean;
     finalResult?: boolean | null;
+    quizId?: string;
 };
 
 export default function QuestionCard({
@@ -36,6 +37,7 @@ export default function QuestionCard({
     displayNumber,
     forceDisabled = false,
     finalResult = null,
+    quizId,
 }: QuestionCardProps) {
     const [selected, setSelected] = useState<string | null>(selectedProp);
     const [submitting, setSubmitting] = useState(false);
@@ -156,7 +158,11 @@ export default function QuestionCard({
                 className={`ml-6 w-100 ${isChatOpen ? "" : "hidden"}`}
                 aria-hidden={!isChatOpen}
             >
-                <ChatComponent onClose={() => setIsChatOpen(false)} />
+                <ChatComponent
+                    quizId={quizId}
+                    questionId={data.id}
+                    onClose={() => setIsChatOpen(false)}
+                />
             </div>
         </div>
     );
