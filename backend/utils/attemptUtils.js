@@ -12,6 +12,20 @@ function isFloat(str) {
 
 // === Utility Functions ===
 
+/** getStudents
+ * Retrieves the list of all students for instructor use
+ */
+async function getStudents(){
+	const sql = 'SELECT userId, name, email FROM user WHERE roleId = 2';
+	try{
+		const [rows] = await pool.query(sql);
+		return rows;
+	}catch(error){
+		console.error("Error retrieving students: ", error);
+		return [];
+	}
+}
+
 /** getCorrectAns
  * Used by checkAnswer to get the correct answer from the database
  * Also used by geminiUtils to provide the correct answer to the AI
@@ -255,6 +269,7 @@ async function getStudentQuestionAttemptsForQuiz(userId, quizId, dateTime){
 }
 
 module.exports = {
+	getStudents,
 	getCorrectAns,
 	checkAnswer,
 	recordQuestionAttempt,

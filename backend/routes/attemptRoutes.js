@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const {verifySession, verifySessionInstructor, verifySessionStudent} = require('../middleware/sessionMiddleware');
-const {checkAnswer,	recordQuestionAttempt,
+const {verifySessionInstructor, verifySessionStudent} = require('../middleware/sessionMiddleware');
+const {getStudents, recordQuestionAttempt,
 	recordQuizAttempt, getAttemptsByQuestion,
 	getAttemptsByQuiz, getAttemptsByStudent,
 	getAttemptsByStudentAndQuestion, getAttemptsByStudentAndQuiz,
@@ -158,6 +158,18 @@ router.get('/student/:studentId', verifySessionInstructor, async (req, res) => {
 	}catch(error){
 		console.error('Error retrieving attempts by student:', error);
 		return res.status(500).json({message: 'Error retrieving attempts by student.'});
+	}
+});
+
+// GET /students
+// Returns list of students (userId, name, email) (instructor use)
+router.get('/students', verifySessionInstructor, async (req, res) => {
+	try{
+		const students = await getStudents();
+		return res.status(200).json({students});
+	}catch(error){
+		console.error('Error retrieving students:', error);
+		return res.status(500).json({message: 'Error retrieving students.'});
 	}
 });
 

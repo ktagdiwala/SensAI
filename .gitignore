@@ -3,3 +3,4 @@
 .env
 SensAI_Insert_Statements.sql
 testEndpoints.js
+/backend/test/attemptRoutes.test.js
