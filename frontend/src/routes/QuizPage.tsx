@@ -4,6 +4,7 @@ import QuestionCard, { type QuestionData, type AnswerFeedback } from "../compone
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
 import { useAuth } from "../authentication/AuthContext";
+import QuizSubmissions from "../components/QuizSubmissions";
 
 const API_BASE_URL = "http://localhost:3000/api";
 
@@ -29,12 +30,12 @@ async function getQuestions({quizId,accessCode,}: {
         );
 
         const rawBody = await res.text();
-        console.log("Quiz API response (raw):", rawBody);
+        // console.log("Quiz API response (raw):", rawBody);
 
         if (!res.ok) throw new Error("Failed to load questions.");
 
         const data = JSON.parse(rawBody);
-        console.log("Loaded quiz questions:", data);
+        // console.log("Loaded quiz questions:", data);
         return data;
     } catch (err) {
         console.error("Unable to fetch quiz questions:", err);
@@ -46,6 +47,10 @@ async function getQuestions({quizId,accessCode,}: {
 export default function QuizPage() {
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [questions, setQuestions] = useState<QuestionData[]>([]);
+    const [showSubmissions, setShowSubmissions] = useState(false);
+    const [submissionResults, setSubmissionResults] = useState<Record<string, boolean>>({});
+    const [quizSubmitted, setQuizSubmitted] = useState(false);
+    const [submissionSummary, setSubmissionSummary] = useState<{ score: number; total: number } | null>(null);
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();
     const navigate = useNavigate();               
@@ -124,8 +129,26 @@ export default function QuizPage() {
                 throw new Error(msg || "Submission failed");
             }
 
+            const data = await res.json();
+            // console.log("Quiz submit result:", data);
+
+            const feedback = Array.isArray(data?.result?.questionFeedback)
+                ? data.result.questionFeedback
+                : [];
+            const mapped: Record<string, boolean> = {};
+            feedback.forEach((item: { questionId: string | number; isCorrect: number | boolean }) => {
+                mapped[String(item.questionId)] = !!item.isCorrect;
+            });
+
+            const totalQuestions = data?.result?.totalQuestions ?? questionArray.length;
+            const score = data?.result?.score ?? feedback.filter((f: any) => f?.isCorrect).length;
+
+            setSubmissionResults(mapped);
+            setQuizSubmitted(true);
+            setSubmissionSummary({ score, total: totalQuestions });
+
             alert("Quiz submitted.");
-            navigate("/student");       
+
         } catch (err) {
             console.error("Quiz submission failed", err);
             alert("Could not submit quiz.");
@@ -195,8 +218,17 @@ export default function QuizPage() {
                     studentId={studentId}
                     lockAfterSubmit={true}
                     displayNumber={idx + 1}
+                    forceDisabled={quizSubmitted}
+                    finalResult={quizSubmitted ? submissionResults[q.id] ?? null : null}
+                    quizId={quizId}
                 />
             ))}
+
+            {quizSubmitted && submissionSummary && (
+                <div className="m-8 p-4 rounded-md border border-canvas-outline bg-green-50 text-green-900">
+                    Score: {submissionSummary.score} / {submissionSummary.total}
+                </div>
+            )}
 
             <button
                 className="bg bg-canvas-light-blue text-white m-8 p-4 rounded-md"
@@ -204,6 +236,19 @@ export default function QuizPage() {
             >
                 Submit Quiz
             </button>
+
+            <button
+                className="bg-gray-200 text-gray-800 m-8 p-2 rounded-md"
+                onClick={() => setShowSubmissions((prev) => !prev)}
+            >
+                {showSubmissions ? "Hide" : "View"} Quiz Submissions
+            </button>
+
+            {showSubmissions && (
+                <div className="m-8">
+                    <QuizSubmissions />
+                </div>
+            )}
         </div>
     );
 }
