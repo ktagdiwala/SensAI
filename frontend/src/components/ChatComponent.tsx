@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import MainIcon from "../assets/MainIcon.svg"
 import CloseIcon from "../assets/xIcon.svg"
+import DownloadIcon from "../assets/downloadicon.svg"
 
 const API_BASE_URL = "http://localhost:3000/api";
 
@@ -97,23 +98,39 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
         }
     };
 
+    // Example download handler (customize as needed)
+    const handleDownload = () => {
+        // Implement your download logic here
+        alert("Download clicked!");
+    };
 
     return (
         <>
             <div className="flex justify-end pr-6 lg:pr-12 mt-4">
-
-                {/**Header */}
+                {/* Header */}
                 <div className="flex h-[540px] w-full max-w-md flex-col rounded-3xl bg-ai-blue-light shadow-xl">
                     <div className="flex items-center justify-between gap-4 px-6 py-4">
-                       
                         <div className="flex items-center gap-2">
                             <img src={MainIcon} alt="SensAi logo" className="w-6 h-6" />
                             <p className="text-sm font-semibold text-gray-900">SensAi</p>
                         </div>
 
-                        <button onClick={onClose} aria-label="Close chat" className="rounded-full p-1 hover:bg-gray-100 transition">
-                            <img src={CloseIcon} alt="Close" className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleDownload}
+                                aria-label="Download chat"
+                                className="rounded-full p-1 hover:bg-gray-100 transition"
+                            >
+                                <img src={DownloadIcon} alt="Download" className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={onClose}
+                                aria-label="Close chat"
+                                className="rounded-full p-1 hover:bg-gray-100 transition"
+                            >
+                                <img src={CloseIcon} alt="Close" className="w-4 h-4" />
+                            </button>
+                        </div>
                     </div>
 
                     {/**Chat section */}
