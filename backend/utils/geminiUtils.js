@@ -1,8 +1,9 @@
 const { GoogleGenAI } = require('@google/genai');
+const { pool } = require('../config/dbConnection'); // Import the DB connection
 require('dotenv').config();	// For loading GEMINI_API_KEY from .env file
 const { getQuizById } = require('./quizUtils');
 const { getQuestionById } = require('./questionUtils');
-const { getCorrectAns } = require('./attemptUtils');
+const { getCorrectAns, getMistakeTypes } = require('./dbQueries');
 const { getUserApiKey } = require('./userUtils');
 
 // The client gets the API key from the environment variable `GEMINI_API_KEY`.
@@ -12,7 +13,7 @@ const apiKeyFromEnv = process.env.GEMINI_API_KEY || null;
 /* You can view usage and rate limits for your current API key by going to 
    https://aistudio.google.com/api-keys > Usage and Billing > Rate Limit*/
 
-/** getResponse
+/** getChatResponse
  * Generates a response from the Gemini API based on the student's message and quiz context.
  * @param {string} studentMessage
  * @param {string} quizId
@@ -20,7 +21,7 @@ const apiKeyFromEnv = process.env.GEMINI_API_KEY || null;
  * @param {string} chatHistory OPTIONAL
  * @returns 
  */
-async function getResponse(userId, studentMessage, quizId, questionId, chatHistory=""){
+async function getChatResponse(userId, studentMessage, quizId, questionId, chatHistory=""){
 	const {title: quizTitle, prompt: quizPrompt} = await getQuizById(quizId);
 	const {title: questionText, prompt: questionPrompt} = await getQuestionById(questionId);
 	const correctAns = await getCorrectAns(questionId);
@@ -54,4 +55,64 @@ async function getResponse(userId, studentMessage, quizId, questionId, chatHisto
   	return response.text;
 }
 
-module.exports = { getResponse };
+/** getMistake
+ * Determines the mistake the student made for a particular question based on their answer and chat history.
+ */
+async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory=""){
+	// This function is called only if the student answer was incorrect.
+	// Thus, if their selfConfidence is 0, we assume the student guessed the answer.
+	if(selfConfidence === 0){
+		// MistakeId 7 corresponds to No Attempt or Guess
+		return 7;
+	}
+	const {title: questionText, correctAns} = await getQuestionById(questionId);
+	if(!questionText || correctAns === null){
+		throw new Error("Error retrieving question details.");
+	}
+	const mistakeTypes = await getMistakeTypes();
+	if(mistakeTypes === null){
+		throw new Error("Error retrieving mistake types.");
+	} else if(mistakeTypes.length === 0){
+		throw new Error("No mistake types found in the database.");
+	}
+	// Parse the mistake response into a list for the prompt
+	let mistakeList = "";
+	mistakeTypes.forEach((mistake) => {
+		mistakeList += `(${mistake.mistakeId}) ${mistake.label}: ${mistake.description}\n`;
+	});
+	const prompt = `A student answered the following question incorrectly: ${questionText}.
+	The correct answer is: ${correctAns}. The student's answer was: ${givenAnswer}. And their self-reported confidence level was: ${selfConfidence} (0 - low, 1- medium, 2- high).
+	Based on the self confidence, given answer, and the chat history between the AI assistant and student (if there is chat history), identify the main type of mistake the student made.
+	Chat History: ${chatHistory}
+	Here is the list of possible mistakes in (id) label: description format:
+	${mistakeList}
+	Respond with only the mistake ID that best describes the student's mistake.`;
+	const apiKey = await getUserApiKey() || apiKeyFromEnv;
+	const ai = new GoogleGenAI({apiKey: apiKey});
+	const response = await ai.models.generateContent({
+		model: "gemini-2.5-flash",
+		config: {
+			thinkingConfig: {
+			thinkingBudget: 0, // Disables thinking, uses too many tokens otherwise
+			},
+			systemInstruction: "You are an educational AI assistant that helps identify student mistakes."
+		},
+		contents: prompt
+  	});
+	// Extract the mistakeId from the response
+	var mistakeId;
+	try{
+		mistakeId = parseInt(response.text.trim());
+	} catch (error){
+		throw new Error("Error parsing mistake ID from Gemini response.");
+	}
+	return mistakeId;
+}
+
+/** getQuizSummary
+ * Generates a summary of the quiz performance using Gemini API.
+ * @param {*} quizResult
+ * 
+ */
+
+module.exports = { getChatResponse, getMistake };

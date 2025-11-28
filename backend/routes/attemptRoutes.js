@@ -33,7 +33,7 @@ function isValidDateTime(dateTime) {
 // Record a student's attempt at answering a question
 router.post('/submit', verifySessionStudent, async (req, res) => {
 	const {userId} = req.session;
-	const {quizId, questionId, givenAns, numMsgs} = req.body;
+	const {quizId, questionId, givenAns, numMsgs, chatHistory="", selfConfidence=null} = req.body;
 
 	if(!quizId || !questionId || givenAns === undefined){
 		return res.status(400).json({message: 'quizId, questionId, and givenAns are required.'});
@@ -44,12 +44,13 @@ router.post('/submit', verifySessionStudent, async (req, res) => {
 	}
 
 	try{
-		const result = await recordQuestionAttempt(userId, questionId, quizId, givenAns, numMsgs);
+		const result = await recordQuestionAttempt(userId, questionId, quizId, givenAns, chatHistory, numMsgs, selfConfidence);
+		
 		if(!result){
 			return res.status(400).json({message: 'Failed to record question attempt. Please check your input parameters.'});
 		}
-		const { insertId, isCorrect } = result;
-		return res.status(201).json({message: 'Question attempt recorded.', attemptId: insertId, isCorrect});
+		const { isCorrect } = result;
+		return res.status(201).json({message: 'Question attempt recorded.', isCorrect});
 	}catch(error){
 		console.error('Error recording question attempt:', error);
 		return res.status(500).json({message: 'Error recording question attempt.'});
