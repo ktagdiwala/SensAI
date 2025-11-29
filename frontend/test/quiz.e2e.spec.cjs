@@ -2,7 +2,7 @@ const { Builder, By, until } = require('selenium-webdriver');
 const chrome = require('selenium-webdriver/chrome');
 const http = require('http');
 
-const BASE_URL = 'http://localhost:5174';
+const BASE_URL = 'http://localhost:5173';
 
 describe('Student E2E: Signup → Login → Quiz → Submit → Verify', function () {
   this.timeout(120000);
@@ -142,7 +142,7 @@ describe('Student E2E: Signup → Login → Quiz → Submit → Verify', functio
     const quizIdInput = await driver.wait(until.elementLocated(By.id('QuizId')), 10000);
     const quizPasswordInput = await driver.findElement(By.id('QuizPassword'));
     await quizIdInput.sendKeys('1');
-    await quizPasswordInput.sendKeys('SQL123');
+    await quizPasswordInput.sendKeys('IPTCP');
 
     // Click the Submit button to start the quiz
     await driver.wait(until.elementLocated(By.id('QuizId')), 10000);
