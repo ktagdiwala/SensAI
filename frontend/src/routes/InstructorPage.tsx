@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import EditIcon from '../assets/Edit.svg';
 import TrashIcon from '../assets/Trash.svg';
-
+import InstructorAttemptsView from '../components/QuizSubmissionsInstructor';
 
 interface Quiz {
     quizId: number;
@@ -119,6 +119,11 @@ export default function InstructorPage() {
                         </ul>
                     )}
                 </div>
+            </section>
+
+            <section className="space-y-4">
+                <h2 className="text-xl font-semibold">Quiz Submission Insights</h2>
+                <InstructorAttemptsView />
             </section>
         </div>
     );
