@@ -98,10 +98,21 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
         }
     };
 
-    // Example download handler (customize as needed)
     const handleDownload = () => {
-        // Implement your download logic here
-        alert("Download clicked!");
+        if (messages.length === 0) {
+            alert("No chat history to download.");
+            return;
+        }
+
+        // Format chat history as plain text
+        const chatText = messages
+            .map((msg) => {
+                const role = msg.role === "user" ? "Student" : "SensAI";
+                return `${role}: ${msg.content}`;
+            })
+            .join("\n\n");
+
+        
     };
 
     return (
