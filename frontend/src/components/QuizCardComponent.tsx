@@ -25,6 +25,7 @@ type QuestionCardProps = {
     forceDisabled?: boolean;
     finalResult?: boolean | null;
     quizId?: string;
+    onMessageCountChange?: (count: number) => void;
 };
 
 export default function QuestionCard({
@@ -38,6 +39,7 @@ export default function QuestionCard({
     forceDisabled = false,
     finalResult = null,
     quizId,
+    onMessageCountChange,
 }: QuestionCardProps) {
     const [selected, setSelected] = useState<string | null>(selectedProp);
     const [submitting, setSubmitting] = useState(false);
@@ -162,6 +164,7 @@ export default function QuestionCard({
                     quizId={quizId}
                     questionId={data.id}
                     onClose={() => setIsChatOpen(false)}
+                    onMessageCountChange={onMessageCountChange}
                 />
             </div>
         </div>

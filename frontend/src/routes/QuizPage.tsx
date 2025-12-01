@@ -51,6 +51,7 @@ export default function QuizPage() {
     const [submissionResults, setSubmissionResults] = useState<Record<string, boolean>>({});
     const [quizSubmitted, setQuizSubmitted] = useState(false);
     const [submissionSummary, setSubmissionSummary] = useState<{ score: number; total: number } | null>(null);
+    const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();
     const navigate = useNavigate();               
@@ -102,7 +103,7 @@ export default function QuizPage() {
             return {
                 questionId: q.id,
                 givenAnswer,
-                numMsgs: 0,
+                numMsgs: messageCounts[q.id] ?? 0,
             };
         }).filter(q => q.givenAnswer !== "");        // optional: only include answered
 
@@ -181,7 +182,7 @@ export default function QuizPage() {
                     quizId,
                     questionId,
                     givenAns,
-                    numMsgs: 0,
+                    numMsgs: messageCounts[questionId] ?? 0,
                 }),
             });
 
@@ -204,6 +205,10 @@ export default function QuizPage() {
         }
     };
 
+    const handleMessageCountUpdate = (questionId: string, count: number) => {
+        setMessageCounts((prev) => ({ ...prev, [questionId]: count }));
+    };
+
     return (
         <div>
             {questions.map((q, idx) => (
@@ -221,6 +226,7 @@ export default function QuizPage() {
                     forceDisabled={quizSubmitted}
                     finalResult={quizSubmitted ? submissionResults[q.id] ?? null : null}
                     quizId={quizId}
+                    onMessageCountChange={(count) => handleMessageCountUpdate(q.id, count)}
                 />
             ))}
 

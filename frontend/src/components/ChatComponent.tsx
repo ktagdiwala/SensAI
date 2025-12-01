@@ -15,9 +15,10 @@ type ChatComponentProps = {
     onClose: () => void;
     quizId?: string;
     questionId: string;
+    onMessageCountChange?: (count: number) => void;
 };
 
-export default function ChatComponent({ onClose, quizId, questionId }: ChatComponentProps) {
+export default function ChatComponent({ onClose, quizId, questionId, onMessageCountChange }: ChatComponentProps) {
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
@@ -103,6 +104,11 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
         // Implement your download logic here
         alert("Download clicked!");
     };
+
+    useEffect(() => {
+        const totalSent = messages.filter((m) => m.role === "user").length;
+        onMessageCountChange?.(totalSent);
+    }, [messages, onMessageCountChange]);
 
     return (
         <>
