@@ -1,7 +1,7 @@
 // Parent component (e.g., a page or a quiz container)
 // For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
@@ -205,9 +205,12 @@ export default function QuizPage() {
         }
     };
 
-    const handleMessageCountUpdate = (questionId: string, count: number) => {
-        setMessageCounts((prev) => ({ ...prev, [questionId]: count }));
-    };
+    const handleMessageCountUpdate = useCallback((questionId: string, count: number) => {
+        setMessageCounts((prev) => {
+            if (prev[questionId] === count) return prev;
+            return { ...prev, [questionId]: count };
+        });
+    }, []);
 
     return (
         <div>

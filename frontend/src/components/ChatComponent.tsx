@@ -24,6 +24,7 @@ export default function ChatComponent({ onClose, quizId, questionId, onMessageCo
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const chatSectionRef = useRef<HTMLDivElement>(null);
+    const prevUserCount = useRef(0);
 
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setInput(event.target.value)
@@ -106,8 +107,11 @@ export default function ChatComponent({ onClose, quizId, questionId, onMessageCo
     };
 
     useEffect(() => {
+        if (!onMessageCountChange) return;
         const totalSent = messages.filter((m) => m.role === "user").length;
-        onMessageCountChange?.(totalSent);
+        if (prevUserCount.current === totalSent) return;
+        prevUserCount.current = totalSent;
+        onMessageCountChange(totalSent);
     }, [messages, onMessageCountChange]);
 
     return (
