@@ -22,6 +22,9 @@ type QuestionCardProps = {
     onSelect?: (choiceId: string) => void;
     studentId?: string;
     displayNumber?: number;
+    forceDisabled?: boolean;
+    finalResult?: boolean | null;
+    quizId?: string;
 };
 
 export default function QuestionCard({
@@ -32,13 +35,16 @@ export default function QuestionCard({
     onSelect,
     studentId,
     displayNumber,
+    forceDisabled = false,
+    finalResult = null,
+    quizId,
 }: QuestionCardProps) {
     const [selected, setSelected] = useState<string | null>(selectedProp);
     const [submitting, setSubmitting] = useState(false);
     const [feedback, setFeedback] = useState<AnswerFeedback | null>(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
 
-    const disabled = submitting || (lockAfterSubmit && !!feedback);
+    const disabled = forceDisabled || submitting || (lockAfterSubmit && !!feedback);
 
     useEffect(() => {
         setSelected(selectedProp ?? null);
@@ -138,6 +144,12 @@ export default function QuestionCard({
                             )}
                         </div>
                     )}
+
+                    {finalResult !== null && (
+                        <div className="mt-3 font-semibold text-blue-800">
+                            Quiz submission result: {finalResult ? "✅ Correct" : "❌ Incorrect"}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -146,7 +158,11 @@ export default function QuestionCard({
                 className={`ml-6 w-100 ${isChatOpen ? "" : "hidden"}`}
                 aria-hidden={!isChatOpen}
             >
-                <ChatComponent onClose={() => setIsChatOpen(false)} />
+                <ChatComponent
+                    quizId={quizId}
+                    questionId={data.id}
+                    onClose={() => setIsChatOpen(false)}
+                />
             </div>
         </div>
     );

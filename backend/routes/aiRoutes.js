@@ -3,7 +3,7 @@ const {verifySession} = require('../middleware/sessionMiddleware');
 const router = require('express').Router();
 
 // Generates a response using Gemini API
-router.get('/gemini', verifySession, async (req, res) => {
+router.post('/gemini', verifySession, async (req, res) => {
 	const { userId } = req.session;
 	// get the studentMessage, quizId, questionId, and chatHistory from the body
 	const { studentMessage, quizId, questionId, chatHistory } = req.body;

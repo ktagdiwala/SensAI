@@ -17,6 +17,7 @@ const questionRoutes = require('./routes/questionRoutes');
 const attemptRoutes = require('./routes/attemptRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const userRoutes = require('./routes/userRoutes');
+const testRoutes = require('./routes/testRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -55,6 +56,7 @@ app.use('/api/question', questionRoutes);
 app.use('/api/attempt', attemptRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api', userRoutes);
+app.use('/api/test', testRoutes);
 
 // === Start the Server ===
 app.listen(PORT, () => {
