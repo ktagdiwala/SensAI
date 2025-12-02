@@ -53,6 +53,7 @@ export default function QuizPage() {
     const [submissionSummary, setSubmissionSummary] = useState<{ score: number; total: number } | null>(null);
     const [quizSummary, setQuizSummary] = useState<string | null>(null);
     const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
+    const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();
     const navigate = useNavigate();               
@@ -106,13 +107,14 @@ export default function QuizPage() {
                 givenAns,
                 numMsgs: messageCounts[q.id] ?? 0,
             };
-        }).filter(q => q.givenAnswer !== "");      
+        }).filter(q => q.givenAns !== "");      
 
         if (questionArray.filter(q => q.givenAns !== "").length === 0) {
             alert("You have not answered any questions.");
             return;
         }
 
+        setIsSubmittingQuiz(true);
         try {
             const res = await fetch(
                 `${API_BASE_URL}/attempt/submit-quiz`,
@@ -156,6 +158,8 @@ export default function QuizPage() {
         } catch (err) {
             console.error("Quiz submission failed", err);
             alert("Could not submit quiz.");
+        } finally {
+            setIsSubmittingQuiz(false);
         }
     }
 
@@ -229,7 +233,7 @@ export default function QuizPage() {
                     studentId={studentId}
                     lockAfterSubmit={true}
                     displayNumber={idx + 1}
-                    forceDisabled={quizSubmitted}
+                    forceDisabled={quizSubmitted || isSubmittingQuiz}
                     finalResult={quizSubmitted ? submissionResults[q.id] ?? null : null}
                     quizId={quizId}
                     onMessageCountChange={(count) => handleMessageCountUpdate(q.id, count)}
@@ -250,10 +254,11 @@ export default function QuizPage() {
             )}
 
             <button
-                className="bg bg-canvas-light-blue text-white m-8 p-4 rounded-md"
+                className="bg bg-canvas-light-blue text-white m-8 p-4 rounded-md disabled:opacity-50"
                 onClick={submitQuiz}
+                disabled={isSubmittingQuiz}
             >
-                Submit Quiz
+                {isSubmittingQuiz ? "Submitting..." : "Submit Quiz"}
             </button>
 
             <button

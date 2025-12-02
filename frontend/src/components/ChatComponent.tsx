@@ -67,7 +67,7 @@ export default function ChatComponent({ onClose, quizId, questionId, onMessageCo
         setSending(true);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/chat/gemini`, {
+            const res = await fetch(`${API_BASE_URL}/ai/gemini`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
