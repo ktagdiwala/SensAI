@@ -34,8 +34,13 @@ async function getStudents(){
  */
 async function checkAnswer(questionId, givenAns){
 	const correctAns = await getCorrectAns(questionId);
-	if(correctAns === null){
+	// console.log(`checkAnswer - questionId: ${questionId}, correctAns: "${correctAns}", givenAns: "${givenAns}"`);
+	if(correctAns === null || correctAns === undefined){
 		console.error("Could not retrieve correct answer");
+		return 0;
+	}
+	if(givenAns === null || givenAns === undefined || givenAns === ""){
+		console.error("givenAns is null, undefined, or empty (unanswered)");
 		return 0;
 	}
 
@@ -74,7 +79,7 @@ async function recordQuestionAttempt(userId, questionId, quizId, givenAns, chatH
 		try{
 			// Lazy import to avoid circular dependency
 			const { getMistake } = require('./geminiUtils');
-			mistakeId = await getMistake(questionId, givenAns, selfConfidence, chatHistory);
+			mistakeId = await getMistake(questionId, givenAns, selfConfidence, chatHistory, userId);
 		}catch (error){
 			console.error("Error determining mistake ID: ", error);
 		}
@@ -87,7 +92,8 @@ async function recordQuestionAttempt(userId, questionId, quizId, givenAns, chatH
 	}
 	try{
 		const [result] = await pool.query(sql, [userId, questionId, quizId, dateTime, isCorrect, givenAns, numMsgs, selfConfidence, mistakeId]);
-		return { isCorrect };
+		// console.log(`Successfully recorded question attempt - userId: ${userId}, questionId: ${questionId}, isCorrect: ${isCorrect}, mistakeId: ${mistakeId}`);
+		return { isCorrect, mistakeId };
 	}catch(error){
 		console.error("Error recording question attempt: ", error);
 		return null;
@@ -105,8 +111,8 @@ async function recordQuizAttempt(userId, quizId, questionArray){
 	let questionFeedback = [];
 	for(const question of questionArray){
 		const { questionId, givenAns, numMsgs=0, chatHistory="", selfConfidence=null } = question;
-		const { isCorrect } = await recordQuestionAttempt(userId, questionId, quizId, givenAns, chatHistory, numMsgs, selfConfidence);
-		questionFeedback.push({ questionId, isCorrect });
+		const { isCorrect, mistakeId } = await recordQuestionAttempt(userId, questionId, quizId, givenAns, chatHistory, numMsgs, selfConfidence);
+		questionFeedback.push({ questionId, givenAns, isCorrect, mistakeId });
 		score += isCorrect;
 	}
 

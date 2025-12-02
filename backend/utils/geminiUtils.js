@@ -25,7 +25,7 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 	const {title: quizTitle, prompt: quizPrompt} = await getQuizById(quizId);
 	const {title: questionText, prompt: questionPrompt} = await getQuestionById(questionId);
 	const correctAns = await getCorrectAns(questionId);
-	if(!quizTitle || correctAns === null || !questionText){
+	if(!quizTitle || correctAns === null || correctAns === undefined || !questionText){
 		throw new Error("Error retrieving quiz or question details.");
 	}
 	
@@ -57,8 +57,13 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 
 /** getMistake
  * Determines the mistake the student made for a particular question based on their answer and chat history.
+ * @param {int} questionId
+ * @param {string} givenAnswer
+ * @param {int} selfConfidence
+ * @param {string} chatHistory
+ * @param {int} userId
  */
-async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory=""){
+async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="", userId){
 	// This function is called only if the student answer was incorrect.
 	// Thus, if their selfConfidence is 0, we assume the student guessed the answer.
 	if(selfConfidence === 0){
@@ -66,7 +71,7 @@ async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="
 		return 7;
 	}
 	const {title: questionText, correctAns} = await getQuestionById(questionId);
-	if(!questionText || correctAns === null){
+	if(!questionText || correctAns === null || correctAns === undefined){
 		throw new Error("Error retrieving question details.");
 	}
 	const mistakeTypes = await getMistakeTypes();
@@ -87,7 +92,7 @@ async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="
 	Here is the list of possible mistakes in (id) label: description format:
 	${mistakeList}
 	Respond with only the mistake ID that best describes the student's mistake.`;
-	const apiKey = await getUserApiKey() || apiKeyFromEnv;
+	const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
 	const ai = new GoogleGenAI({apiKey: apiKey});
 	const response = await ai.models.generateContent({
 		model: "gemini-2.5-flash",
@@ -99,12 +104,19 @@ async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="
 		},
 		contents: prompt
   	});
+	// console.log("Question# " + questionId + " Mistake Identification Response: ", response.text);
 	// Extract the mistakeId from the response
 	var mistakeId;
 	try{
 		mistakeId = parseInt(response.text.trim());
+		if(isNaN(mistakeId)){
+			console.warn("Gemini returned non-numeric mistake ID:", response.text);
+			// Default to a generic mistake type if parsing fails
+			mistakeId = null;
+		}
 	} catch (error){
-		throw new Error("Error parsing mistake ID from Gemini response.");
+		console.error("Error parsing mistake ID from Gemini response:", error);
+		mistakeId = null;
 	}
 	return mistakeId;
 }
@@ -112,7 +124,49 @@ async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="
 /** getQuizSummary
  * Generates a summary of the quiz performance using Gemini API.
  * @param {*} quizResult
- * 
+ * @param {int} userId
  */
+async function getQuizSummary(quizResult, userId){
+	// Parse quizResult to extract quiz questions, correct answers, student answers, mistake types
+	const {questionFeedback, totalQuestions, score} = quizResult;
+	let quizAttempt;
+	// Get the question title for each question in questionFeedback 
+	// and the mistake label if applicable
+	try{
+		for(const feedback of questionFeedback){
+			let mistakeLabel;
+			// Identifies the mistake label if answer was incorrect
+			if(feedback.isCorrect === 0){
+				mistakeLabel = await pool.query('SELECT label FROM mistake_type WHERE mistakeId = ?', [feedback.mistakeId])
+					.then(([rows]) => rows.length > 0 ? rows[0].label : 'Unknown Mistake');
+			}
+			const question = await getQuestionById(feedback.questionId);
+			quizAttempt = (quizAttempt || "") + `Question: ${question.title}\tCorrect Answer: ${question.correctAns}\tStudent Answer: ${feedback.givenAns}\tMistake Type: ${mistakeLabel || "N/A"}\n\n`;
+		}
+	} catch (error){
+		throw new Error("Error retrieving question or mistake details for quiz summary.");
+	}
 
-module.exports = { getChatResponse, getMistake };
+	const role = `You are an educational AI assistant that provides insightful feedback to students based on their quiz performance.`;
+	const prompt = `The student has completed a quiz with the following details:\n\n${quizAttempt}
+	Out of a total of ${totalQuestions} questions, the student scored ${score}.
+	Provide a constructive summary (max 150 words across 2 paragraphs) of the student's performance, highlighting areas of strength and suggesting 
+	specific topics or concepts that the student should revisit/review based on the mistakes made. If the student performed well, 
+	offer encouragement and suggest advanced topics for further study.`;
+	const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
+	const ai = new GoogleGenAI({apiKey: apiKey});
+	const response = await ai.models.generateContent({
+		model: "gemini-2.5-flash",
+		config: {
+			thinkingConfig: {
+			thinkingBudget: 0, // Disables thinking, uses too many tokens otherwise
+			},
+			systemInstruction: role
+		},
+		contents: prompt
+  	});
+	// console.log("Quiz Summary Response: ", response.text);
+	return response.text;
+}
+
+module.exports = { getChatResponse, getMistake, getQuizSummary };
