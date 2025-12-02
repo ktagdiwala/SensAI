@@ -46,12 +46,6 @@ async function createQuiz(title, accessCode, prompt, courseId){
 	}
 }
 
-/** TODO: addQuestionsToQuiz
- * Inserts records into the quiz_questions table to associate questions with a quiz
- * @param {int} quizId
- * @param {Array<int>} questionIds
- */
-
 /** getQuizById
  * Retrieves quiz record by its id
  * @param {int} quizId

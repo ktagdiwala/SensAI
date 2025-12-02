@@ -51,6 +51,7 @@ export default function QuizPage() {
     const [submissionResults, setSubmissionResults] = useState<Record<string, boolean>>({});
     const [quizSubmitted, setQuizSubmitted] = useState(false);
     const [submissionSummary, setSubmissionSummary] = useState<{ score: number; total: number } | null>(null);
+    const [quizSummary, setQuizSummary] = useState<string | null>(null);
     const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();
@@ -95,19 +96,19 @@ export default function QuizPage() {
             return;
         }
 
-        // Build questionArray with questionId + givenAnswer(label) + numMsgs
+        // Build questionArray with questionId + givenAns + numMsgs
         const questionArray = questions.map((q) => {
             const choiceId = answers[q.id];           // stored selected choice id
             const choice = q.choices.find(c => c.id === choiceId);
-            const givenAnswer = choice?.label ?? "";  // send label text (or empty if none)
+            const givenAns = choice?.label ?? "";  // send label text (or empty if none)
             return {
                 questionId: q.id,
-                givenAnswer,
+                givenAns,
                 numMsgs: messageCounts[q.id] ?? 0,
             };
         }).filter(q => q.givenAnswer !== "");      
 
-        if (questionArray.length === 0) {
+        if (questionArray.filter(q => q.givenAns !== "").length === 0) {
             alert("You have not answered any questions.");
             return;
         }
@@ -143,10 +144,12 @@ export default function QuizPage() {
 
             const totalQuestions = data?.result?.totalQuestions ?? questionArray.length;
             const score = data?.result?.score ?? feedback.filter((f: any) => f?.isCorrect).length;
+            const summary = data?.summary ?? null;
 
             setSubmissionResults(mapped);
             setQuizSubmitted(true);
             setSubmissionSummary({ score, total: totalQuestions });
+            setQuizSummary(summary);
 
             alert("Quiz submitted.");
 
@@ -236,6 +239,13 @@ export default function QuizPage() {
             {quizSubmitted && submissionSummary && (
                 <div className="m-8 p-4 rounded-md border border-canvas-outline bg-green-50 text-green-900">
                     Score: {submissionSummary.score} / {submissionSummary.total}
+                </div>
+            )}
+
+            {quizSubmitted && quizSummary && (
+                <div className="m-8 p-6 rounded-md border border-canvas-outline bg-blue-50 text-blue-900">
+                    <h3 className="text-lg font-semibold mb-3">Quiz Summary</h3>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed">{quizSummary}</p>
                 </div>
             )}
 

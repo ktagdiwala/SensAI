@@ -15,7 +15,7 @@ const registerRoutes = require('./routes/registerRoutes');
 const quizRoutes = require('./routes/quizRoutes');
 const questionRoutes = require('./routes/questionRoutes');
 const attemptRoutes = require('./routes/attemptRoutes');
-const chatRoutes = require('./routes/chatRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 const userRoutes = require('./routes/userRoutes');
 const testRoutes = require('./routes/testRoutes');
 
@@ -54,7 +54,7 @@ app.use('/api', registerRoutes);
 app.use('/api/quiz', quizRoutes);
 app.use('/api/question', questionRoutes);
 app.use('/api/attempt', attemptRoutes);
-app.use('/api/chat', chatRoutes);
+app.use('/api/ai', aiRoutes);
 app.use('/api', userRoutes);
 app.use('/api/test', testRoutes);
 

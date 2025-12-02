@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 
 type Attempt = {
@@ -8,12 +8,36 @@ type Attempt = {
     questionId?: number;
     questionTitle?: string;
     userId?: number;
+    userName?: string;
     isCorrect?: 0 | 1 | boolean | null;
     numMsgs?: number | null;
     [key: string]: unknown;
 };
 
+type Student = {
+    userId: number;
+    name: string;
+    email: string;
+};
+
+type Quiz = {
+    quizId: number;
+    quizTitle: string;
+    accessCode?: string;
+    courseTitle?: string;
+};
+
+type Question = {
+    questionId: number;
+    title: string;
+    correctAns: string;
+    otherAns: string;
+    prompt?: string;
+};
+
 const API_BASE = 'http://localhost:3000/api/attempt';
+const API_QUIZ = 'http://localhost:3000/api/quiz';
+const API_QUESTION = 'http://localhost:3000/api/question';
 
 export default function InstructorAttemptsView() {
     const [attempts, setAttempts] = useState<Attempt[] | null>(null);
@@ -21,11 +45,99 @@ export default function InstructorAttemptsView() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    // Student data
+    const [students, setStudents] = useState<Student[]>([]);
+    const [studentsLoading, setStudentsLoading] = useState(true);
+    const [studentsError, setStudentsError] = useState('');
+
+    // Quiz data
+    const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+    const [quizzesLoading, setQuizzesLoading] = useState(true);
+    const [quizzesError, setQuizzesError] = useState('');
+
+    // Question data
+    const [questions, setQuestions] = useState<Question[]>([]);
+    const [questionsLoading, setQuestionsLoading] = useState(false);
+    const [questionsError, setQuestionsError] = useState('');
+
+    // Form state
     const [quizId, setQuizId] = useState('');
     const [questionId, setQuestionId] = useState('');
     const [studentId, setStudentId] = useState('');
     const [studentQuestionId, setStudentQuestionId] = useState('');
     const [studentQuizId, setStudentQuizId] = useState('');
+
+    // Fetch students list on component mount
+    useEffect(() => {
+        const fetchStudents = async () => {
+            setStudentsLoading(true);
+            setStudentsError('');
+            try {
+                const res = await fetch(`${API_BASE}/students`, {
+                    method: 'GET',
+                    credentials: 'include',
+                });
+                if (!res.ok) throw new Error(`Request failed with ${res.status}`);
+                const data = await res.json();
+                setStudents(Array.isArray(data.students) ? data.students : []);
+            } catch (err) {
+                setStudentsError(err instanceof Error ? err.message : 'Unknown error');
+            } finally {
+                setStudentsLoading(false);
+            }
+        };
+        fetchStudents();
+    }, []);
+
+    // Fetch quizzes list on component mount
+    useEffect(() => {
+        const fetchQuizzes = async () => {
+            setQuizzesLoading(true);
+            setQuizzesError('');
+            try {
+                const res = await fetch(`${API_QUIZ}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                });
+                if (!res.ok) throw new Error(`Request failed with ${res.status}`);
+                const data = await res.json();
+                setQuizzes(Array.isArray(data.quizzes) ? data.quizzes : []);
+            } catch (err) {
+                setQuizzesError(err instanceof Error ? err.message : 'Unknown error');
+            } finally {
+                setQuizzesLoading(false);
+            }
+        };
+        fetchQuizzes();
+    }, []);
+
+    // Fetch questions for selected quiz
+    useEffect(() => {
+        if (!quizId) {
+            setQuestions([]);
+            setQuestionsError('');
+            return;
+        }
+
+        const fetchQuestions = async () => {
+            setQuestionsLoading(true);
+            setQuestionsError('');
+            try {
+                const res = await fetch(`${API_QUESTION}/quiz/${quizId}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                });
+                if (!res.ok) throw new Error(`Request failed with ${res.status}`);
+                const data = await res.json();
+                setQuestions(Array.isArray(data.questions) ? data.questions : []);
+            } catch (err) {
+                setQuestionsError(err instanceof Error ? err.message : 'Unknown error');
+            } finally {
+                setQuestionsLoading(false);
+            }
+        };
+        fetchQuestions();
+    }, [quizId]);
 
     const fetchAttempts = async (endpoint: string, label: string) => {
         setLoading(true);
@@ -40,7 +152,16 @@ export default function InstructorAttemptsView() {
             if (!res.ok) throw new Error(`Request failed with ${res.status}`);
             const data = await res.json();
             console.log(`[InstructorAttemptsView] Raw response for ${label}:`, data);
-            setAttempts(Array.isArray(data.attempts) ? data.attempts : []);
+            
+            // Enrich attempts with student names
+            const attemptsData = Array.isArray(data.attempts) ? data.attempts : [];
+            const studentMap = new Map(students.map(s => [s.userId, s.name]));
+            const enrichedAttempts = attemptsData.map((attempt: Attempt) => ({
+                ...attempt,
+                userName: attempt.userId ? (studentMap.get(attempt.userId) || `User ${attempt.userId}`) : 'Unknown User'
+            }));
+            
+            setAttempts(enrichedAttempts);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Unknown error');
         } finally {
@@ -69,7 +190,39 @@ export default function InstructorAttemptsView() {
     const formatFieldLabel = (key: string) => {
         if (key === 'correctAns') return 'Correct Answer';
         if (key === 'otherAns') return 'Other Choices';
+		if (key === 'selfConfidence') return 'Self Confidence';
+		if (key === 'mistakeTypeLabel') return 'Mistake Type';
+		if (key === 'givenAns') return 'Student Answered';
         return key;
+    };
+
+    const renderFieldValue = (key: string, value: unknown) => {
+        // Handle null values
+        if (value === null || value === undefined) {
+            return '-';
+        }
+
+        // Special handling for otherAns field
+        if (key === 'otherAns' && typeof value === 'string') {
+            const choices = value.split('{|}').filter(choice => choice.trim());
+            if (choices.length > 0) {
+                return (
+                    <ul className="list-inside space-y-1">
+                        {choices.map((choice, idx) => (
+                            <li key={idx} className="text-slate-700">
+                                • {choice.trim()}
+                            </li>
+                        ))}
+                    </ul>
+                );
+            }
+        }
+        
+        // Default rendering
+        if (typeof value === 'object') {
+            return JSON.stringify(value);
+        }
+        return String(value ?? '-');
     };
 
     const renderAttempts = () => {
@@ -85,6 +238,7 @@ export default function InstructorAttemptsView() {
             'questionId',
             'questionTitle',
             'userId',
+            'userName',
             'isCorrect',
             'numMsgs',
         ]);
@@ -104,7 +258,7 @@ export default function InstructorAttemptsView() {
                                 <p className="text-sm font-semibold text-slate-700">
                                     Attempted: {attempt.dateTime ? new Date(attempt.dateTime).toLocaleString() : '—'}
                                 </p>
-                                <p className="text-sm text-slate-500">User ID: {attempt.userId ?? '—'}</p>
+                                <p className="text-sm text-slate-500">{attempt.userName || `User ${attempt.userId}`}</p>
                             </div>
 
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -147,7 +301,7 @@ export default function InstructorAttemptsView() {
                                             <div key={key}>
                                                 <dt className="font-medium">{formatFieldLabel(key)}</dt>
                                                 <dd className="break-words text-slate-700">
-                                                    {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '')}
+                                                    {renderFieldValue(key, value)}
                                                 </dd>
                                             </div>
                                         ))}
@@ -165,117 +319,163 @@ export default function InstructorAttemptsView() {
         <div className="space-y-6 rounded-lg border border-slate-200 p-6 shadow-sm">
             <h3 className="text-lg font-semibold text-slate-800">Attempt Lookups</h3>
 
-            <form className="space-y-3" onSubmit={submitHandler(() => fetchAttempts(`/quiz/${quizId}`, `quiz ${quizId}`))}>
-                <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                    Quiz ID
-                    <input
-                        required
-                        type="number"
-                        value={quizId}
-                        onChange={(e) => setQuizId(e.target.value)}
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
+            {/* Student Filter Dropdown */}
+            <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+                <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                    Filter by Student
+                    {studentsLoading ? (
+                        <p className="text-sm text-slate-500">Loading students...</p>
+                    ) : studentsError ? (
+                        <p className="text-sm text-red-600">{studentsError}</p>
+                    ) : (
+                        <select
+                            value={studentId}
+                            onChange={(e) => setStudentId(e.target.value)}
+                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                        >
+                            <option value="">-- Select a Student --</option>
+                            {students.map((student) => (
+                                <option key={student.userId} value={student.userId}>
+                                    {student.name} ({student.email})
+                                </option>
+                            ))}
+                        </select>
+                    )}
                 </label>
-                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
-                    Fetch Quiz Attempts
-                </button>
-            </form>
-
-            <form className="space-y-3" onSubmit={submitHandler(() => fetchAttempts(`/question/${questionId}`, `question ${questionId}`))}>
-                <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                    Question ID
-                    <input
-                        required
-                        type="number"
-                        value={questionId}
-                        onChange={(e) => setQuestionId(e.target.value)}
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
-                </label>
-                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
-                    Fetch Question Attempts
-                </button>
-            </form>
-
-            <form className="space-y-3" onSubmit={submitHandler(() => fetchAttempts(`/student/${studentId}`, `student ${studentId}`))}>
-                <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                    Student ID
-                    <input
-                        required
-                        type="number"
-                        value={studentId}
-                        onChange={(e) => setStudentId(e.target.value)}
-                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                    />
-                </label>
-                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
-                    Fetch Student Attempts
-                </button>
-            </form>
-
-            <form
-                className="space-y-3"
-                onSubmit={submitHandler(() =>
-                    fetchAttempts(`/student/${studentId}/question/${studentQuestionId}`, `student ${studentId} & question ${studentQuestionId}`)
+                {studentId && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                            onClick={() => fetchAttempts(`/student/${studentId}`, `student ${studentId}`)}
+                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                        >
+                            View All Attempts
+                        </button>
+                        <button
+                            onClick={() => {
+                                setStudentQuizId('');
+                                setStudentQuestionId('');
+                            }}
+                            className="rounded-md bg-slate-400 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-500"
+                        >
+                            Clear Quiz/Question
+                        </button>
+                    </div>
                 )}
-            >
-                <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                        Student ID
-                        <input
-                            required
-                            type="number"
-                            value={studentId}
-                            onChange={(e) => setStudentId(e.target.value)}
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                        Question ID
-                        <input
-                            required
-                            type="number"
-                            value={studentQuestionId}
-                            onChange={(e) => setStudentQuestionId(e.target.value)}
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                    </label>
-                </div>
-                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
-                    Fetch Student & Question Attempts
-                </button>
-            </form>
+            </div>
 
-            <form
-                className="space-y-3"
-                onSubmit={submitHandler(() => fetchAttempts(`/student/${studentId}/quiz/${studentQuizId}`, `student ${studentId} & quiz ${studentQuizId}`))}
-            >
-                <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                        Student ID
-                        <input
-                            required
-                            type="number"
-                            value={studentId}
-                            onChange={(e) => setStudentId(e.target.value)}
+            {/* Quiz Filter Dropdown */}
+            <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+                <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                    Filter by Quiz
+                    {quizzesLoading ? (
+                        <p className="text-sm text-slate-500">Loading quizzes...</p>
+                    ) : quizzesError ? (
+                        <p className="text-sm text-red-600">{quizzesError}</p>
+                    ) : (
+                        <select
+                            value={quizId}
+                            onChange={(e) => setQuizId(e.target.value)}
                             className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
+                        >
+                            <option value="">-- Select a Quiz --</option>
+                            {quizzes.map((quiz) => (
+                                <option key={quiz.quizId} value={quiz.quizId}>
+                                    {quiz.quizTitle}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                </label>
+                {quizId && (
+                    <div className="mt-3">
+                        <button
+                            onClick={() => fetchAttempts(`/quiz/${quizId}`, `quiz ${quizId}`)}
+                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                        >
+                            View Quiz Attempts
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Question Filter Dropdown (dependent on Quiz selection) */}
+            {quizId && (
+                <div className="rounded-lg border border-slate-100 bg-slate-50 p-4">
+                    <label className="flex flex-col gap-2 text-sm font-medium text-slate-700">
+                        Filter by Question (from selected quiz)
+                        {questionsLoading ? (
+                            <p className="text-sm text-slate-500">Loading questions...</p>
+                        ) : questionsError ? (
+                            <p className="text-sm text-red-600">{questionsError}</p>
+                        ) : questions.length === 0 ? (
+                            <p className="text-sm text-slate-500">No questions found for this quiz.</p>
+                        ) : (
+                            <select
+                                value={questionId}
+                                onChange={(e) => setQuestionId(e.target.value)}
+                                className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                            >
+                                <option value="">-- Select a Question --</option>
+                                {questions.map((question) => (
+                                    <option key={question.questionId} value={question.questionId}>
+                                        {question.title}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
                     </label>
-                    <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                        Quiz ID
-                        <input
-                            required
-                            type="number"
-                            value={studentQuizId}
-                            onChange={(e) => setStudentQuizId(e.target.value)}
-                            className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                        />
-                    </label>
+                    {questionId && (
+                        <div className="mt-3">
+                            <button
+                                onClick={() => fetchAttempts(`/question/${questionId}`, `question ${questionId}`)}
+                                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                            >
+                                View Question Attempts
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
-                    Fetch Student & Quiz Attempts
-                </button>
-            </form>
+            )}
+
+            {studentId && (
+                <>
+                    <form className="space-y-3" onSubmit={submitHandler(() => fetchAttempts(`/student/${studentId}/question/${studentQuestionId}`, `student ${studentId} & question ${studentQuestionId}`))}>
+                        <div className="grid gap-3 sm:grid-cols-1">
+                            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                                Question ID
+                                <input
+                                    required
+                                    type="number"
+                                    value={studentQuestionId}
+                                    onChange={(e) => setStudentQuestionId(e.target.value)}
+                                    className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                                />
+                            </label>
+                        </div>
+                        <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
+                            Fetch Student & Question Attempts
+                        </button>
+                    </form>
+
+                    <form className="space-y-3" onSubmit={submitHandler(() => fetchAttempts(`/student/${studentId}/quiz/${studentQuizId}`, `student ${studentId} & quiz ${studentQuizId}`))}>
+                        <div className="grid gap-3 sm:grid-cols-1">
+                            <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
+                                Quiz ID
+                                <input
+                                    required
+                                    type="number"
+                                    value={studentQuizId}
+                                    onChange={(e) => setStudentQuizId(e.target.value)}
+                                    className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                                />
+                            </label>
+                        </div>
+                        <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
+                            Fetch Student & Quiz Attempts
+                        </button>
+                    </form>
+                </>
+            )}
 
             <div className="space-y-2">
                 <p className="text-sm font-semibold text-slate-700">Results</p>

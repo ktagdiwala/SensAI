@@ -1,4 +1,4 @@
-const {getResponse} = require('../utils/geminiUtils');
+const {getChatResponse} = require('../utils/geminiUtils');
 const {verifySession} = require('../middleware/sessionMiddleware');
 const router = require('express').Router();
 
@@ -11,9 +11,10 @@ router.post('/gemini', verifySession, async (req, res) => {
 		return res.status(400).json({ message: 'Student message, quiz ID, and question ID are required.' });
 	}
 	try {
-		const response = await getResponse(userId, studentMessage, quizId, questionId, chatHistory);
+		const response = await getChatResponse(userId, studentMessage, quizId, questionId, chatHistory);
 		res.json({ response });
 	} catch (error) {
+		console.log(error);
 		res.status(500).json({ message: 'Error generating response.' });
 	}
 });
