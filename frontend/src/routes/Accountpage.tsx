@@ -163,13 +163,13 @@ export default function AccountPage() {
     <div className="mx-auto mt-10 max-w-xl rounded-lg bg-white p-8 shadow">
       <h1 className="text-2xl font-semibold text-gray-900">Account</h1>
       <p className="mt-1 text-sm text-gray-600">
-        Display name:
+        Name:{' '}
         <span className="font-medium">{profileName || 'Not set'}</span>
       </p>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <label className="block text-sm font-medium text-gray-700" htmlFor="name">
-          Display name
+          Name 
         </label>
         <input
           id="name"
