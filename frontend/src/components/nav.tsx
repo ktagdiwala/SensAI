@@ -35,6 +35,9 @@ export default function Nav() {
         </>
       )}
       {user && (
+        <NavLink to="/account" className={linkClass}>Account</NavLink>
+      )}
+      {user && (
         <button
           onClick={handleLogout}
           className="ml-auto rounded-full bg-canvas-light-blue px-4 py-2 text-white text-sm font-semibold hover:bg-blue-600"

@@ -2,7 +2,7 @@
 // For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
+import { useParams, useNavigate } from "react-router-dom"; 
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
 
@@ -105,7 +105,7 @@ export default function QuizPage() {
                 givenAnswer,
                 numMsgs: messageCounts[q.id] ?? 0,
             };
-        }).filter(q => q.givenAnswer !== "");        // optional: only include answered
+        }).filter(q => q.givenAnswer !== "");      
 
         if (questionArray.length === 0) {
             alert("You have not answered any questions.");
