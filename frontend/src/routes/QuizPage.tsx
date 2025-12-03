@@ -1,8 +1,8 @@
 // Parent component (e.g., a page or a quiz container)
 // For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useNavigate, useBlocker } from "react-router-dom"; // <-- add useNavigate
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
 
@@ -58,6 +58,47 @@ export default function QuizPage() {
 
     const studentId = user?.id ? String(user.id) : undefined;
     const [quizTitle, setQuizTitle] = useState<string>("");
+    const [shouldBlockNavigation, setShouldBlockNavigation] = useState(true);
+
+    // Block navigation when user tries to leave the page
+    const blocker = useBlocker(
+        ({ currentLocation, nextLocation }) =>
+            shouldBlockNavigation &&
+            !quizSubmitted &&
+            currentLocation.pathname !== nextLocation.pathname
+    );
+
+    // Handle browser back/forward/refresh
+    useEffect(() => {
+        if (quizSubmitted) {
+            setShouldBlockNavigation(false);
+            return;
+        }
+
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            e.preventDefault();
+            e.returnValue = '';
+            return '';
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [quizSubmitted]);
+
+    // Handle blocked navigation with confirmation dialog
+    useEffect(() => {
+        if (blocker.state === "blocked") {
+            const confirmLeave = window.confirm(
+                "Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress."
+            );
+            if (confirmLeave) {
+                setShouldBlockNavigation(false);
+                blocker.proceed();
+            } else {
+                blocker.reset();
+            }
+        }
+    }, [blocker]);
 
     useEffect(() => {
         if (!quizId || !accessCode) return;
@@ -161,6 +202,7 @@ export default function QuizPage() {
             setQuizSubmitted(true);
             setSubmissionSummary({ score, total: totalQuestions });
             setQuizSummary(summary);
+            setShouldBlockNavigation(false); // Allow navigation after submission
 
             alert("Quiz submitted.");
 
