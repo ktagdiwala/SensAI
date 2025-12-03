@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const {verifySession, verifySessionInstructor, verifySessionStudent} = require('../middleware/sessionMiddleware');
-const {checkAnswer,	recordQuestionAttempt,
+const {verifySessionInstructor, verifySessionStudent} = require('../middleware/sessionMiddleware');
+const {getStudents, recordQuestionAttempt,
 	recordQuizAttempt, getAttemptsByQuestion,
 	getAttemptsByQuiz, getAttemptsByStudent,
 	getAttemptsByStudentAndQuestion, getAttemptsByStudentAndQuiz,
 	getStudentQuizAttempts, getStudentQuestionAttemptsForQuiz} = require('../utils/attemptUtils');
+const {getQuizSummary} = require('../utils/geminiUtils');
 
 // === Helper Functions ===
 
@@ -33,7 +34,7 @@ function isValidDateTime(dateTime) {
 // Record a student's attempt at answering a question
 router.post('/submit', verifySessionStudent, async (req, res) => {
 	const {userId} = req.session;
-	const {quizId, questionId, givenAns, numMsgs} = req.body;
+	const {quizId, questionId, givenAns, numMsgs, chatHistory="", selfConfidence=null} = req.body;
 
 	if(!quizId || !questionId || givenAns === undefined){
 		return res.status(400).json({message: 'quizId, questionId, and givenAns are required.'});
@@ -44,12 +45,13 @@ router.post('/submit', verifySessionStudent, async (req, res) => {
 	}
 
 	try{
-		const result = await recordQuestionAttempt(userId, questionId, quizId, givenAns, numMsgs);
+		const result = await recordQuestionAttempt(userId, questionId, quizId, givenAns, chatHistory, numMsgs, selfConfidence);
+		
 		if(!result){
 			return res.status(400).json({message: 'Failed to record question attempt. Please check your input parameters.'});
 		}
-		const { insertId, isCorrect } = result;
-		return res.status(201).json({message: 'Question attempt recorded.', attemptId: insertId, isCorrect});
+		const { isCorrect } = result;
+		return res.status(201).json({message: 'Question attempt recorded.', isCorrect});
 	}catch(error){
 		console.error('Error recording question attempt:', error);
 		return res.status(500).json({message: 'Error recording question attempt.'});
@@ -73,9 +75,9 @@ router.post('/submit-quiz', verifySessionStudent, async (req, res) => {
 
 	// Validate each question in the array
 	for(let i = 0; i < questionArray.length; i++){
-		const {questionId, givenAnswer} = questionArray[i];
-		if(!questionId || givenAnswer === undefined){
-			return res.status(400).json({message: `Question at index ${i} is missing questionId or givenAnswer.`});
+		const {questionId, givenAns} = questionArray[i];
+		if(!questionId || givenAns === undefined){
+			return res.status(400).json({message: `Question at index ${i} is missing questionId or givenAns.`});
 		}
 		if(!isValidPositiveInt(questionId)){
 			return res.status(400).json({message: `Question at index ${i} has invalid questionId.`});
@@ -87,10 +89,11 @@ router.post('/submit-quiz', verifySessionStudent, async (req, res) => {
 		if(!result){
 			return res.status(400).json({message: 'Failed to record quiz attempt. Please check your input parameters.'});
 		}
-		return res.status(201).json({message: 'Quiz attempt recorded.', result});
+		const summary = await getQuizSummary(result, userId);
+		return res.status(201).json({message: 'Quiz attempt recorded.', result, summary});
 	}catch(error){
-		console.error('Error recording quiz attempt:', error);
-		return res.status(500).json({message: 'Error recording quiz attempt.'});
+		console.error('Error recording quiz attempt or getting summary:', error);
+		return res.status(500).json({message: 'Error recording quiz attempt or getting summary.'});
 	}
 });
 
@@ -158,6 +161,18 @@ router.get('/student/:studentId', verifySessionInstructor, async (req, res) => {
 	}catch(error){
 		console.error('Error retrieving attempts by student:', error);
 		return res.status(500).json({message: 'Error retrieving attempts by student.'});
+	}
+});
+
+// GET /students
+// Returns list of students (userId, name, email) (instructor use)
+router.get('/students', verifySessionInstructor, async (req, res) => {
+	try{
+		const students = await getStudents();
+		return res.status(200).json({students});
+	}catch(error){
+		console.error('Error retrieving students:', error);
+		return res.status(500).json({message: 'Error retrieving students.'});
 	}
 });
 
