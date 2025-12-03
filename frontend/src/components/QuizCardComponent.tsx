@@ -164,6 +164,8 @@ export default function QuestionCard({
                     quizId={quizId}
                     questionId={data.id}
                     questionNumber={displayNumber}
+                    questionText={data.description}
+                    questionOptions={data.choices.map(c => c.label)}
                     quizTitle={quizTitle}
                     onClose={() => setIsChatOpen(false)}
                 />

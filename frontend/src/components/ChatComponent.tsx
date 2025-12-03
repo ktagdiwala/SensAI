@@ -18,10 +18,12 @@ type ChatComponentProps = {
     questionId: string;
     quizTitle?: string;
     questionNumber?: number;
+    questionText?: string;
+    questionOptions?: string[];
 };
 
 
-export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber }: ChatComponentProps) {
+export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions }: ChatComponentProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
@@ -149,11 +151,46 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
             yPosition += 8;
         }
 
-        // Question Number (fallback to ID)
-        doc.setFontSize(10);
-        const qLabel = typeof questionNumber === "number" ? `Question: ${questionNumber}` : `Question ID: ${questionId}`;
-        doc.text(qLabel, margin, yPosition);
-        yPosition += 10;
+        // Question heading and content
+        doc.setFontSize(12);
+        const qHeading = typeof questionNumber === "number" ? `Question ${questionNumber}:` : `Question ID: ${questionId}`;
+        doc.text(qHeading, margin, yPosition);
+        yPosition += 8;
+
+        if (questionText && questionText.trim().length > 0) {
+            doc.setFontSize(11);
+            const qLines = doc.splitTextToSize(questionText, maxWidth);
+            if (yPosition + qLines.length * 7 > pageHeight - margin) {
+                doc.addPage();
+                yPosition = margin;
+            }
+            doc.text(qLines, margin, yPosition);
+            // Minimal spacing between question text and options
+            yPosition += qLines.length * 7 + 1;
+        }
+
+        if (Array.isArray(questionOptions) && questionOptions.length > 0) {
+            doc.setFontSize(11);
+            // Label
+            doc.text("Options:", margin, yPosition);
+            yPosition += 6;
+
+            // Render as lettered list (A., B., C., ...)
+            const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            for (let i = 0; i < questionOptions.length; i++) {
+                const label = `${letters[i] || i + 1}. `;
+                const optText = `${label}${questionOptions[i]}`;
+                const optLines = doc.splitTextToSize(optText, maxWidth - 8);
+                // Page break if needed
+                if (yPosition + optLines.length * 7 > pageHeight - margin) {
+                    doc.addPage();
+                    yPosition = margin;
+                }
+                // Indent options slightly
+                doc.text(optLines, margin + 8, yPosition);
+                yPosition += optLines.length * 7 + 1;
+            }
+        }
 
         // Messages
         doc.setFontSize(11);
