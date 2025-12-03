@@ -171,25 +171,14 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
 
         if (Array.isArray(questionOptions) && questionOptions.length > 0) {
             doc.setFontSize(11);
-            // Label
-            doc.text("Options:", margin, yPosition);
-            yPosition += 6;
-
-            // Render as lettered list (A., B., C., ...)
-            const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            for (let i = 0; i < questionOptions.length; i++) {
-                const label = `${letters[i] || i + 1}. `;
-                const optText = `${label}${questionOptions[i]}`;
-                const optLines = doc.splitTextToSize(optText, maxWidth - 8);
-                // Page break if needed
-                if (yPosition + optLines.length * 7 > pageHeight - margin) {
-                    doc.addPage();
-                    yPosition = margin;
-                }
-                // Indent options slightly
-                doc.text(optLines, margin + 8, yPosition);
-                yPosition += optLines.length * 7 + 1;
+            const bulletOptions = questionOptions.map((opt) => `- ${opt}`);
+            const optLines = doc.splitTextToSize(bulletOptions.join("\n"), maxWidth);
+            if (yPosition + optLines.length * 7 > pageHeight - margin) {
+                doc.addPage();
+                yPosition = margin;
             }
+            doc.text(optLines, margin, yPosition);
+            yPosition += optLines.length * 7 + 1;
         }
 
         // Messages
