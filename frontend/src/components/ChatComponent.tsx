@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { jsPDF } from "jspdf";
 import MainIcon from "../assets/MainIcon.svg"
 import CloseIcon from "../assets/xIcon.svg"
 import DownloadIcon from "../assets/downloadicon.svg"
@@ -98,10 +99,49 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
         }
     };
 
-    // Example download handler (customize as needed)
     const handleDownload = () => {
-        // Implement your download logic here
-        alert("Download clicked!");
+        if (messages.length === 0) {
+            alert("No chat history to download.");
+            return;
+        }
+
+        // Create PDF
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        const maxWidth = pageWidth - 2 * margin;
+        let yPosition = margin;
+
+        // Title
+        doc.setFontSize(16);
+        doc.text("SensAI Chat History", margin, yPosition);
+        yPosition += 10;
+
+        // Question ID
+        doc.setFontSize(10);
+        doc.text(`Question ID: ${questionId}`, margin, yPosition);
+        yPosition += 10;
+
+        // Messages
+        doc.setFontSize(11);
+        messages.forEach((msg) => {
+            const role = msg.role === "user" ? "Student" : "SensAI";
+            const prefix = `${role}: `;
+            const lines = doc.splitTextToSize(prefix + msg.content, maxWidth);
+
+            // Check if we need a new page
+            if (yPosition + lines.length * 7 > pageHeight - margin) {
+                doc.addPage();
+                yPosition = margin;
+            }
+
+            doc.text(lines, margin, yPosition);
+            yPosition += lines.length * 7 + 5; // line height + spacing
+        });
+
+        // Download
+        doc.save(`Chat History Q${questionId}.pdf`);
     };
 
     return (
