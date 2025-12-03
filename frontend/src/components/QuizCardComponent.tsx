@@ -163,6 +163,7 @@ export default function QuestionCard({
                 <ChatComponent
                     quizId={quizId}
                     questionId={data.id}
+                    questionNumber={displayNumber}
                     quizTitle={quizTitle}
                     onClose={() => setIsChatOpen(false)}
                 />

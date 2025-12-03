@@ -17,10 +17,11 @@ type ChatComponentProps = {
     quizId?: string;
     questionId: string;
     quizTitle?: string;
+    questionNumber?: number;
 };
 
 
-export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp }: ChatComponentProps) {
+export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber }: ChatComponentProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
@@ -148,9 +149,10 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
             yPosition += 8;
         }
 
-        // Question ID
+        // Question Number (fallback to ID)
         doc.setFontSize(10);
-        doc.text(`Question ID: ${questionId}`, margin, yPosition);
+        const qLabel = typeof questionNumber === "number" ? `Question: ${questionNumber}` : `Question ID: ${questionId}`;
+        doc.text(qLabel, margin, yPosition);
         yPosition += 10;
 
         // Messages
@@ -171,7 +173,8 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
         });
 
         // Download
-        doc.save(`${safeTitle}_Q${questionId}.pdf`);
+        const qNum = typeof questionNumber === "number" ? `Q${questionNumber}` : `Q${questionId}`;
+        doc.save(`${safeTitle}_${qNum}.pdf`);
     };
 
     return (
