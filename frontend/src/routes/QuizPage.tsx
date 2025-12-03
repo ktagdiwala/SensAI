@@ -1,8 +1,8 @@
 // Parent component (e.g., a page or a quiz container)
 // For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate, useBlocker } from "react-router-dom"; // <-- add useNavigate
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
 
@@ -58,47 +58,72 @@ export default function QuizPage() {
 
     const studentId = user?.id ? String(user.id) : undefined;
     const [quizTitle, setQuizTitle] = useState<string>("");
-    const [shouldBlockNavigation, setShouldBlockNavigation] = useState(true);
 
-    // Block navigation when user tries to leave the page
-    const blocker = useBlocker(
-        ({ currentLocation, nextLocation }) =>
-            shouldBlockNavigation &&
-            !quizSubmitted &&
-            currentLocation.pathname !== nextLocation.pathname
-    );
-
-    // Handle browser back/forward/refresh
+    // Handle browser back/forward/refresh/close
     useEffect(() => {
-        if (quizSubmitted) {
-            setShouldBlockNavigation(false);
-            return;
-        }
+        if (quizSubmitted) return;
 
         const handleBeforeUnload = (e: BeforeUnloadEvent) => {
             e.preventDefault();
-            e.returnValue = '';
-            return '';
+            e.returnValue = 'Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress.';
+            return e.returnValue;
         };
 
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [quizSubmitted]);
 
-    // Handle blocked navigation with confirmation dialog
+    // Intercept navigation to other routes (React Router links)
     useEffect(() => {
-        if (blocker.state === "blocked") {
+        if (quizSubmitted) return;
+
+        const handleClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            // Check for any anchor tag or element with role="link"
+            const link = target.closest('a, [role="link"]');
+            
+            if (link) {
+                // Get the target path from href or data attributes
+                const href = link.getAttribute('href');
+                const currentPath = window.location.pathname;
+                
+                // Check if navigating away from current quiz page
+                if (href && href !== currentPath && !href.startsWith('#')) {
+                    const confirmLeave = window.confirm(
+                        "Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress."
+                    );
+                    if (!confirmLeave) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        return false;
+                    }
+                }
+            }
+        };
+
+        // Intercept back button
+        const handlePopState = () => {
             const confirmLeave = window.confirm(
                 "Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress."
             );
-            if (confirmLeave) {
-                setShouldBlockNavigation(false);
-                blocker.proceed();
-            } else {
-                blocker.reset();
+            if (!confirmLeave) {
+                window.history.pushState(null, '', window.location.pathname);
             }
-        }
-    }, [blocker]);
+        };
+
+        // Push initial state for back button handling
+        window.history.pushState(null, '', window.location.pathname);
+        
+        // Use capture phase to intercept before React Router
+        document.addEventListener('click', handleClick, { capture: true });
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            document.removeEventListener('click', handleClick, { capture: true });
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [quizSubmitted]);
 
     useEffect(() => {
         if (!quizId || !accessCode) return;
@@ -202,7 +227,6 @@ export default function QuizPage() {
             setQuizSubmitted(true);
             setSubmissionSummary({ score, total: totalQuestions });
             setQuizSummary(summary);
-            setShouldBlockNavigation(false); // Allow navigation after submission
 
             alert("Quiz submitted.");
 
