@@ -16,14 +16,35 @@ type ChatComponentProps = {
     onClose: () => void;
     quizId?: string;
     questionId: string;
+    quizTitle?: string;
+    questionNumber?: number;
+    questionText?: string;
+    questionOptions?: string[];
 };
 
-export default function ChatComponent({ onClose, quizId, questionId }: ChatComponentProps) {
 
+export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions }: ChatComponentProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
+    const [quizTitle, setQuizTitle] = useState<string>(quizTitleProp || "");
     const chatSectionRef = useRef<HTMLDivElement>(null);
+
+    // Fetch quiz title only if not provided as prop
+    useEffect(() => {
+        if (quizTitleProp) return;
+        if (!quizId) return;
+        fetch(`http://localhost:3000/api/quiz/id/${quizId}`, {
+            credentials: "include",
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (data && data.quiz && data.quiz.title) {
+                    setQuizTitle(data.quiz.title);
+                }
+            })
+            .catch(() => {});
+    }, [quizId, quizTitleProp]);
 
     const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setInput(event.target.value)
@@ -66,7 +87,7 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
         setSending(true);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/chat/gemini`, {
+            const res = await fetch(`${API_BASE_URL}/ai/gemini`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -105,6 +126,11 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
             return;
         }
 
+        // Sanitize quiz title for filename
+        const safeTitle = quizTitle
+            ? quizTitle.replace(/[^a-z0-9\-_]+/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '')
+            : `quiz${quizId}`;
+
         // Create PDF
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
@@ -118,10 +144,42 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
         doc.text("SensAI Chat History", margin, yPosition);
         yPosition += 10;
 
-        // Question ID
-        doc.setFontSize(10);
-        doc.text(`Question ID: ${questionId}`, margin, yPosition);
-        yPosition += 10;
+        // Quiz Title
+        if (quizTitle) {
+            doc.setFontSize(12);
+            doc.text(`Quiz: ${quizTitle}`, margin, yPosition);
+            yPosition += 8;
+        }
+
+        // Question heading and content
+        doc.setFontSize(12);
+        const qHeading = typeof questionNumber === "number" ? `Question ${questionNumber}:` : `Question ID: ${questionId}`;
+        doc.text(qHeading, margin, yPosition);
+        yPosition += 8;
+
+        if (questionText && questionText.trim().length > 0) {
+            doc.setFontSize(11);
+            const qLines = doc.splitTextToSize(questionText, maxWidth);
+            if (yPosition + qLines.length * 7 > pageHeight - margin) {
+                doc.addPage();
+                yPosition = margin;
+            }
+            doc.text(qLines, margin, yPosition);
+            // Minimal spacing between question text and options
+            yPosition += qLines.length * 7 + 1;
+        }
+
+        if (Array.isArray(questionOptions) && questionOptions.length > 0) {
+            doc.setFontSize(11);
+            const bulletOptions = questionOptions.map((opt) => `- ${opt}`);
+            const optLines = doc.splitTextToSize(bulletOptions.join("\n"), maxWidth);
+            if (yPosition + optLines.length * 7 > pageHeight - margin) {
+                doc.addPage();
+                yPosition = margin;
+            }
+            doc.text(optLines, margin, yPosition);
+            yPosition += optLines.length * 7 + 1;
+        }
 
         // Messages
         doc.setFontSize(11);
@@ -141,7 +199,8 @@ export default function ChatComponent({ onClose, quizId, questionId }: ChatCompo
         });
 
         // Download
-        doc.save(`Chat History Q${questionId}.pdf`);
+        const qNum = typeof questionNumber === "number" ? `Q${questionNumber}` : `Q${questionId}`;
+        doc.save(`${safeTitle}_${qNum}.pdf`);
     };
 
     return (

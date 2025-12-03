@@ -57,6 +57,7 @@ export default function QuizPage() {
     const navigate = useNavigate();               
 
     const studentId = user?.id ? String(user.id) : undefined;
+    const [quizTitle, setQuizTitle] = useState<string>("");
 
     useEffect(() => {
         if (!quizId || !accessCode) return;
@@ -83,6 +84,17 @@ export default function QuizPage() {
                 }))
             );
         });
+
+        // Fetch quiz details (student-accessible) to get the title
+        fetch(`${API_BASE_URL}/quiz/${encodeURIComponent(quizId)}/${encodeURIComponent(accessCode)}`, {
+            credentials: "include",
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                const title = data?.quiz?.title;
+                if (typeof title === "string") setQuizTitle(title);
+            })
+            .catch(() => {});
     }, [quizId, accessCode]);
 
 
@@ -224,6 +236,7 @@ export default function QuizPage() {
                     forceDisabled={quizSubmitted}
                     finalResult={quizSubmitted ? submissionResults[q.id] ?? null : null}
                     quizId={quizId}
+                    quizTitle={quizTitle}
                 />
             ))}
 
