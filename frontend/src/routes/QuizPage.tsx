@@ -323,6 +323,16 @@ export default function QuizPage() {
             setSubmissionSummary({ score, total: totalQuestions });
             setQuizSummary(summary);
 
+            // Delete all chat history for this quiz after successful submission
+            try {
+                await fetch(`${API_BASE_URL}/chat/${quizId}`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                });
+            } catch (err) {
+                console.error('Failed to delete chat history:', err);
+            }
+
             alert("Quiz submitted.");
 
         } catch (err) {
