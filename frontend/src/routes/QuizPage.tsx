@@ -69,11 +69,37 @@ export default function QuizPage() {
         setChatMap((prev) => ({ ...prev, [questionId]: messages }));
     };
 
+    // Load existing chat history for all questions
+    const loadChatHistory = async () => {
+        try {
+            if (!quizId || !questions.length) return;
+            const loadedChats: Record<string, any[]> = {};
+            for (const question of questions) {
+                const res = await fetch(`${API_BASE_URL}/chat/${quizId}/${question.id}`, {
+                    credentials: 'include',
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.chat && Array.isArray(data.chat) && data.chat.length > 0) {
+                        loadedChats[question.id] = data.chat;
+                    }
+                }
+            }
+            if (Object.keys(loadedChats).length > 0) {
+                setChatMap(loadedChats);
+            }
+        } catch (err) {
+            console.error('Failed to load chat history:', err);
+        }
+    };
+
     // Save all chats to backend
     const saveAllChats = async (useBeacon: boolean = false) => {
         try {
             if (!quizId) return;
-            const chats = Object.entries(chatMap).map(([questionId, chat]) => ({ quizId, questionId, chat }));
+            const chats = Object.entries(chatMap)
+                .filter(([_, chat]) => chat && chat.length > 0)
+                .map(([questionId, chat]) => ({ quizId, questionId, chat }));
             if (chats.length === 0) return;
             const url = `${API_BASE_URL}/chat/save-batch`;
             const payload = JSON.stringify({ chats });
@@ -199,17 +225,17 @@ export default function QuizPage() {
 
             const typedRows: QuizApiQuestion[] = rows as QuizApiQuestion[];
 
-            setQuestions(
-                typedRows.map((row) => ({
-                    id: String(row.questionId),
-                    description: row.title ?? "",
-                    points: 1,
-                    choices: (row.options ?? []).map((label, idx) => ({
-                        id: `choice-${row.questionId}-${idx}`,
-                        label,
-                    })),
-                }))
-            );
+            const questionData = typedRows.map((row) => ({
+                id: String(row.questionId),
+                description: row.title ?? "",
+                points: 1,
+                choices: (row.options ?? []).map((label, idx) => ({
+                    id: `choice-${row.questionId}-${idx}`,
+                    label,
+                })),
+            }));
+            
+            setQuestions(questionData);
         });
 
         // Fetch quiz details (student-accessible) to get the title
@@ -223,6 +249,13 @@ export default function QuizPage() {
             })
             .catch(() => {});
     }, [quizId, accessCode]);
+
+    // Load chat history after questions are loaded
+    useEffect(() => {
+        if (questions.length > 0 && quizId) {
+            loadChatHistory();
+        }
+    }, [questions.length, quizId]);
 
 
 
@@ -366,7 +399,7 @@ export default function QuizPage() {
                     quizId={quizId}
                     quizTitle={quizTitle}
                     onChatUpdate={handleChatUpdate}
-                    
+                    initialChatMessages={chatMap[q.id] || []}
                 />
             ))}
 
