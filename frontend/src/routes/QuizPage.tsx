@@ -1,7 +1,7 @@
 // Parent component (e.g., a page or a quiz container)
 // For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
@@ -58,6 +58,7 @@ export default function QuizPage() {
     // Guard to avoid re-entrant popstate handling
     const ignoringPopRef = (window as any).__sensaiIgnoringPopRef ?? { value: false };
     (window as any).__sensaiIgnoringPopRef = ignoringPopRef;
+    const popGuardRef = useRef(false);
 
     const studentId = user?.id ? String(user.id) : undefined;
     const [quizTitle, setQuizTitle] = useState<string>("");
@@ -94,7 +95,17 @@ export default function QuizPage() {
         }
     };
 
-    // beforeunload removed to avoid native second alert; saves happen on explicit OK only
+    // Handle browser refresh/close silently with beacon save (no native popup)
+    useEffect(() => {
+        if (quizSubmitted) return;
+        const handleBeforeUnload = () => {
+            // Do NOT set returnValue to avoid native dialog; just save via beacon
+            saveAllChats(true);
+            // No return value to keep this silent
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [quizSubmitted, chatMap, quizId]);
 
     // Intercept navigation to other routes (React Router links)
     useEffect(() => {
@@ -125,7 +136,7 @@ export default function QuizPage() {
                         e.preventDefault();
                         e.stopPropagation();
                         try {
-                            await saveAllChats();
+                            window.removeEventListener('popstate', onPopState); await saveAllChats();
                         } finally {
                             if (href) {
                                 // Use hard navigation to ensure request completes before route change
@@ -138,43 +149,42 @@ export default function QuizPage() {
             }
         };
 
-        // Intercept back button
-        const handlePopState = async () => {
-            if (ignoringPopRef.value) {
-                // Ignore this event triggered by our own back() call
-                ignoringPopRef.value = false;
-                return;
+        // Use capture phase to intercept before React Router
+        document.addEventListener('click', handleClick, { capture: true });
+        
+        // Push a state entry so back button will trigger popstate
+        window.history.pushState(null, '', window.location.pathname);
+        
+        // Back button interception: prompt, save on OK, then navigate back
+        const onPopState = async () => {
+            if (popGuardRef.current) { 
+                popGuardRef.current = false; 
+                return; 
             }
-            // Cancel navigation and ask for confirmation
+            
+            // Push state back to stay on current page while showing dialog
             window.history.pushState(null, '', window.location.pathname);
+            
             const confirmLeave = window.confirm(
                 "Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress."
             );
-            if (!confirmLeave) {
-                return;
+            
+            if (confirmLeave) {
+                // User confirmed - save chats and navigate
+                window.removeEventListener('popstate', onPopState); await saveAllChats();
+                popGuardRef.current = true;
+                // Use React Router navigation to preserve session
+                navigate('/students');
             }
-            try {
-                await saveAllChats();
-            } finally {
-                // Set guard and navigate back once
-                ignoringPopRef.value = true;
-                window.history.back();
-            }
+            // If cancelled, we already pushed state above so we stay on page
         };
-
-        // Push initial state for back button handling
-        window.history.pushState(null, '', window.location.pathname);
-        
-        // Use capture phase to intercept before React Router
-        document.addEventListener('click', handleClick, { capture: true });
-        window.addEventListener('popstate', handlePopState);
+        window.addEventListener('popstate', onPopState);
 
         return () => {
             document.removeEventListener('click', handleClick, { capture: true });
-            window.removeEventListener('popstate', handlePopState);
+            window.removeEventListener('popstate', onPopState);
         };
-    }, [quizSubmitted, chatMap, quizId]);
-
+    }, [quizSubmitted, chatMap, quizId, navigate]);
     useEffect(() => {
         if (!quizId || !accessCode) return;
 
