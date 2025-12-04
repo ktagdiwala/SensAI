@@ -21,15 +21,23 @@ type ChatComponentProps = {
     questionText?: string;
     questionOptions?: string[];
     onMessagesChange?: (messages: Message[]) => void;
+    initialMessages?: Message[];
 };
 
 
-export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions, onMessagesChange }: ChatComponentProps) {
-    const [messages, setMessages] = useState<Message[]>([]);
+export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions, onMessagesChange, initialMessages }: ChatComponentProps) {
+    const [messages, setMessages] = useState<Message[]>(initialMessages || []);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const [quizTitle, setQuizTitle] = useState<string>(quizTitleProp || "");
     const chatSectionRef = useRef<HTMLDivElement>(null);
+
+    // Update messages when initialMessages prop changes (for loading saved chats)
+    useEffect(() => {
+        if (initialMessages && initialMessages.length > 0) {
+            setMessages(initialMessages);
+        }
+    }, [initialMessages]);
 
     // Fetch quiz title only if not provided as prop
     useEffect(() => {
