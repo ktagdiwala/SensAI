@@ -45,6 +45,31 @@ router.post('/save', verifySession, async (req, res) => {
     }
 });
 
+// DELETE /:quizId
+// Delete all chat history for a specific user/quiz combination
+router.delete('/:quizId', verifySession, async (req, res) => {
+    const { userId, user } = req.session || {};
+    const { quizId } = req.params;
+
+    if (!quizId) {
+        return res.status(400).json({ message: 'quizId is required.' });
+    }
+
+    try {
+        const query = `
+            DELETE FROM chat_history
+            WHERE userId = ? AND quizId = ?
+        `;
+
+        const [result] = await pool.execute(query, [userId, quizId]);
+
+        return res.status(200).json({ message: 'Chat history deleted successfully.', deletedRows: result?.affectedRows ?? 0 });
+    } catch (error) {
+        console.error('Error deleting chat history:', error);
+        return res.status(500).json({ message: 'Error deleting chat history.', diagnostics: { code: error?.code, err: error?.message } });
+    }
+});
+
 // GET /:quizId/:questionId
 // Retrieve chat history for a specific user/quiz/question combination
 router.get('/:quizId/:questionId', verifySession, async (req, res) => {
@@ -141,31 +166,6 @@ router.post('/save-batch', verifySession, async (req, res) => {
     } catch (error) {
         console.error('Error saving batch chat history:', error);
         return res.status(500).json({ message: 'Error saving batch chat history.', diagnostics: { code: error?.code, err: error?.message } });
-    }
-});
-
-// DELETE /:quizId
-// Delete all chat history for a specific user/quiz combination
-router.delete('/:quizId', verifySession, async (req, res) => {
-    const { userId, user } = req.session || {};
-    const { quizId } = req.params;
-
-    if (!quizId) {
-        return res.status(400).json({ message: 'quizId is required.' });
-    }
-
-    try {
-        const query = `
-            DELETE FROM chat_history
-            WHERE userId = ? AND quizId = ?
-        `;
-
-        const [result] = await pool.execute(query, [userId, quizId]);
-
-        return res.status(200).json({ message: 'Chat history deleted successfully.', deletedRows: result?.affectedRows ?? 0 });
-    } catch (error) {
-        console.error('Error deleting chat history:', error);
-        return res.status(500).json({ message: 'Error deleting chat history.', diagnostics: { code: error?.code, err: error?.message } });
     }
 });
 
