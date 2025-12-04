@@ -23,15 +23,17 @@ type ChatComponentProps = {
     onMessagesChange?: (messages: Message[]) => void;
     initialMessages?: Message[];
     isOpen?: boolean;
+    onMessageCountChange?: (count: number) => void;
 };
 
 
-export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions, onMessagesChange, initialMessages, isOpen }: ChatComponentProps) {
+export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions, onMessagesChange, initialMessages, isOpen, onMessageCountChange }: ChatComponentProps) {
     const [messages, setMessages] = useState<Message[]>(initialMessages || []);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const [quizTitle, setQuizTitle] = useState<string>(quizTitleProp || "");
     const chatSectionRef = useRef<HTMLDivElement>(null);
+    const prevUserCount = useRef(0);
 
     // Update messages when initialMessages prop changes (for loading saved chats)
     useEffect(() => {
@@ -245,6 +247,14 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
         const qNum = typeof questionNumber === "number" ? `Q${questionNumber}` : `Q${questionId}`;
         doc.save(`${safeTitle}_${qNum}.pdf`);
     };
+
+    useEffect(() => {
+        if (!onMessageCountChange) return;
+        const totalSent = messages.filter((m) => m.role === "user").length;
+        if (prevUserCount.current === totalSent) return;
+        prevUserCount.current = totalSent;
+        onMessageCountChange(totalSent);
+    }, [messages, onMessageCountChange]);
 
     return (
         <>
