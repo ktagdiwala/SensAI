@@ -136,11 +136,10 @@ export default function QuizPage() {
                         e.preventDefault();
                         e.stopPropagation();
                         try {
-                            window.removeEventListener('popstate', onPopState); await saveAllChats();
+                            await saveAllChats();
                         } finally {
                             if (href) {
-                                // Use hard navigation to ensure request completes before route change
-                                window.location.assign(href);
+                                navigate(href);
                             }
                         }
                         return false;
@@ -171,10 +170,10 @@ export default function QuizPage() {
             
             if (confirmLeave) {
                 // User confirmed - save chats and navigate
-                window.removeEventListener('popstate', onPopState); await saveAllChats();
                 popGuardRef.current = true;
-                // Use React Router navigation to preserve session
+                await saveAllChats();
                 navigate('/students');
+                window.scrollTo(0, 0);
             }
             // If cancelled, we already pushed state above so we stay on page
         };
