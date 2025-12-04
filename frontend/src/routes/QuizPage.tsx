@@ -95,13 +95,15 @@ export default function QuizPage() {
         }
     };
 
-    // Handle browser refresh/close silently with beacon save (no native popup)
+    // Handle browser refresh/close with alert and save
     useEffect(() => {
         if (quizSubmitted) return;
-        const handleBeforeUnload = () => {
-            // Do NOT set returnValue to avoid native dialog; just save via beacon
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            // Show browser's native confirmation dialog
+            e.preventDefault();
+            e.returnValue = '';
+            // Save via beacon when user confirms leaving
             saveAllChats(true);
-            // No return value to keep this silent
         };
         window.addEventListener('beforeunload', handleBeforeUnload);
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
