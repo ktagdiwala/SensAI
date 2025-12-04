@@ -20,10 +20,11 @@ type ChatComponentProps = {
     questionNumber?: number;
     questionText?: string;
     questionOptions?: string[];
+    onMessagesChange?: (messages: Message[]) => void;
 };
 
 
-export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions }: ChatComponentProps) {
+export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions, onMessagesChange }: ChatComponentProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
@@ -63,6 +64,8 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
         }
     }, [messages]);
 
+    // no restore in this mode
+
     const sendMessage = async () => {
         if (!input.trim() || sending) return;
 
@@ -82,7 +85,11 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
         const userMessage: Message = { id: `${timestamp}-user`, role: "user", content: trimmed };
         const chatHistory = [...messages, userMessage].map((m) => `${m.role}: ${m.content}`).join("\n");
 
-        setMessages((prev) => [...prev, userMessage]);
+        setMessages((prev) => {
+            const next = [...prev, userMessage];
+            onMessagesChange?.(next);
+            return next;
+        });
         setInput("");
         setSending(true);
 
@@ -98,23 +105,31 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
 
             const data = await res.json();
 
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: `${Date.now()}-ai`,
-                    role: "ai",
-                    content: data?.response ?? "No response from AI.",
-                },
-            ]);
+            setMessages((prev) => {
+                const next: Message[] = [
+                    ...prev,
+                    {
+                        id: `${Date.now()}-ai`,
+                        role: "ai" as const,
+                        content: data?.response ?? "No response from AI.",
+                    },
+                ];
+                onMessagesChange?.(next);
+                return next;
+            });
         } catch (error) {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: `${Date.now()}-ai`,
-                    role: "ai",
-                    content: "Sorry, I couldn't reach the assistant. Please try again.",
-                },
-            ]);
+            setMessages((prev) => {
+                const next: Message[] = [
+                    ...prev,
+                    {
+                        id: `${Date.now()}-ai`,
+                        role: "ai" as const,
+                        content: "Sorry, I couldn't reach the assistant. Please try again.",
+                    },
+                ];
+                onMessagesChange?.(next);
+                return next;
+            });
         } finally {
             setSending(false);
         }

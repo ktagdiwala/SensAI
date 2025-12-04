@@ -26,6 +26,7 @@ type QuestionCardProps = {
     finalResult?: boolean | null;
     quizId?: string;
     quizTitle?: string;
+    onChatUpdate?: (questionId: string, messages: any[]) => void;
 };
 
 export default function QuestionCard({
@@ -40,6 +41,7 @@ export default function QuestionCard({
     finalResult = null,
     quizId,
     quizTitle,
+    onChatUpdate,
 }: QuestionCardProps) {
     const [selected, setSelected] = useState<string | null>(selectedProp);
     const [submitting, setSubmitting] = useState(false);
@@ -167,6 +169,7 @@ export default function QuestionCard({
                     questionText={data.description}
                     questionOptions={data.choices.map(c => c.label)}
                     quizTitle={quizTitle}
+                    onMessagesChange={(msgs) => onChatUpdate?.(data.id, msgs)}
                     onClose={() => setIsChatOpen(false)}
                 />
             </div>

@@ -55,29 +55,52 @@ export default function QuizPage() {
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();
     const navigate = useNavigate();               
+    // Guard to avoid re-entrant popstate handling
+    const ignoringPopRef = (window as any).__sensaiIgnoringPopRef ?? { value: false };
+    (window as any).__sensaiIgnoringPopRef = ignoringPopRef;
 
     const studentId = user?.id ? String(user.id) : undefined;
     const [quizTitle, setQuizTitle] = useState<string>("");
+    const [chatMap, setChatMap] = useState<Record<string, any[]>>({});
 
-    // Handle browser back/forward/refresh/close
-    useEffect(() => {
-        if (quizSubmitted) return;
+    // Collect chat updates from ChatComponent
+    const handleChatUpdate = (questionId: string, messages: any[]) => {
+        setChatMap((prev) => ({ ...prev, [questionId]: messages }));
+    };
 
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            e.preventDefault();
-            e.returnValue = 'Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress.';
-            return e.returnValue;
-        };
+    // Save all chats to backend
+    const saveAllChats = async (useBeacon: boolean = false) => {
+        try {
+            if (!quizId) return;
+            const chats = Object.entries(chatMap).map(([questionId, chat]) => ({ quizId, questionId, chat }));
+            if (chats.length === 0) return;
+            const url = `${API_BASE_URL}/chat/save-batch`;
+            const payload = JSON.stringify({ chats });
+            if (useBeacon && typeof navigator.sendBeacon === 'function') {
+                const blob = new Blob([payload], { type: 'application/json' });
+                navigator.sendBeacon(url, blob);
+            } else {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: payload,
+                    keepalive: true,
+                    mode: 'cors',
+                });
+            }
+        } catch (_) {
+            // swallow errors; navigation shouldn't be blocked due to save failure
+        }
+    };
 
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [quizSubmitted]);
+    // beforeunload removed to avoid native second alert; saves happen on explicit OK only
 
     // Intercept navigation to other routes (React Router links)
     useEffect(() => {
         if (quizSubmitted) return;
 
-        const handleClick = (e: MouseEvent) => {
+        const handleClick = async (e: MouseEvent) => {
             const target = e.target as HTMLElement;
             // Check for any anchor tag or element with role="link"
             const link = target.closest('a, [role="link"]');
@@ -97,18 +120,45 @@ export default function QuizPage() {
                         e.stopPropagation();
                         e.stopImmediatePropagation();
                         return false;
+                    } else {
+                        // Prevent default navigation, save, then navigate programmatically
+                        e.preventDefault();
+                        e.stopPropagation();
+                        try {
+                            await saveAllChats();
+                        } finally {
+                            if (href) {
+                                // Use hard navigation to ensure request completes before route change
+                                window.location.assign(href);
+                            }
+                        }
+                        return false;
                     }
                 }
             }
         };
 
         // Intercept back button
-        const handlePopState = () => {
+        const handlePopState = async () => {
+            if (ignoringPopRef.value) {
+                // Ignore this event triggered by our own back() call
+                ignoringPopRef.value = false;
+                return;
+            }
+            // Cancel navigation and ask for confirmation
+            window.history.pushState(null, '', window.location.pathname);
             const confirmLeave = window.confirm(
                 "Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress."
             );
             if (!confirmLeave) {
-                window.history.pushState(null, '', window.location.pathname);
+                return;
+            }
+            try {
+                await saveAllChats();
+            } finally {
+                // Set guard and navigate back once
+                ignoringPopRef.value = true;
+                window.history.back();
             }
         };
 
@@ -123,7 +173,7 @@ export default function QuizPage() {
             document.removeEventListener('click', handleClick, { capture: true });
             window.removeEventListener('popstate', handlePopState);
         };
-    }, [quizSubmitted]);
+    }, [quizSubmitted, chatMap, quizId]);
 
     useEffect(() => {
         if (!quizId || !accessCode) return;
@@ -162,6 +212,7 @@ export default function QuizPage() {
             })
             .catch(() => {});
     }, [quizId, accessCode]);
+
 
 
     
@@ -303,6 +354,8 @@ export default function QuizPage() {
                     finalResult={quizSubmitted ? submissionResults[q.id] ?? null : null}
                     quizId={quizId}
                     quizTitle={quizTitle}
+                    onChatUpdate={handleChatUpdate}
+                    
                 />
             ))}
 
@@ -325,6 +378,7 @@ export default function QuizPage() {
             >
                 Submit Quiz
             </button>
+
 
             <button
                 className="bg-gray-200 text-gray-800 m-8 p-2 rounded-md"
