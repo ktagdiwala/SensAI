@@ -174,6 +174,7 @@ export default function QuestionCard({
                     onMessagesChange={(msgs) => onChatUpdate?.(data.id, msgs)}
                     onClose={() => setIsChatOpen(false)}
                     initialMessages={initialChatMessages}
+                    isOpen={isChatOpen}
                 />
             </div>
         </div>
