@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import ChatComponent from "../components/ChatComponent"; 
+import SelfConfidence from "./SelfConfidence";
 
 export type Choice = { id: string; label: string };
 export type QuestionData = {
@@ -25,7 +26,10 @@ type QuestionCardProps = {
     forceDisabled?: boolean;
     finalResult?: boolean | null;
     quizId?: string;
+    onMessageCountChange?: (count: number) => void;
     quizTitle?: string;
+    selfConfidence?: 0 | 1 | 2 | null;
+    onConfidenceChange?: (value: 0 | 1 | 2) => void;
 };
 
 export default function QuestionCard({
@@ -39,7 +43,10 @@ export default function QuestionCard({
     forceDisabled = false,
     finalResult = null,
     quizId,
+    onMessageCountChange,
     quizTitle,
+    selfConfidence = null,
+    onConfidenceChange,
 }: QuestionCardProps) {
     const [selected, setSelected] = useState<string | null>(selectedProp);
     const [submitting, setSubmitting] = useState(false);
@@ -47,13 +54,15 @@ export default function QuestionCard({
     const [isChatOpen, setIsChatOpen] = useState(false);
 
     const disabled = forceDisabled || submitting || (lockAfterSubmit && !!feedback);
+    const confidence = selfConfidence ?? null;
+    const checkAnswerDisabled = !selected || disabled || confidence === null;
 
     useEffect(() => {
         setSelected(selectedProp ?? null);
     }, [selectedProp]);
 
     async function onCheckAnswer() {
-        if (!selected) return;
+        if (!selected || confidence === null) return;
         setSubmitting(true);
         try {
             const res = await validate({ questionId: data.id, choiceId: selected, studentId });
@@ -67,6 +76,11 @@ export default function QuestionCard({
         if (disabled) return;
         setSelected(choiceId);
         onSelect?.(choiceId);
+    }
+
+    function handleConfidenceChange(value: 0 | 1 | 2) {
+        if (disabled) return;
+        onConfidenceChange?.(value);
     }
 
     return (
@@ -121,13 +135,21 @@ export default function QuestionCard({
                         ))}
                     </div>
 
+                    {/**Self Confidence */}
+                    <SelfConfidence
+                        value={confidence}
+                        onChange={handleConfidenceChange}
+                        disabled={disabled}
+                        name={`self-confidence-${data.id}`}
+                    />
+
                     {/**Submit*/}
                     <div className="text-center mt-6">
                         <button
                             onClick={onCheckAnswer}
-                            disabled={!selected || disabled}
+                            disabled={checkAnswerDisabled}
                             className={`px-6 py-3 rounded-sm font-semibold text-white ${
-                                !selected || disabled
+                                checkAnswerDisabled
                                     ? "bg-gray-400 cursor-not-allowed"
                                     : "bg-canvas-dark-blue hover:bg-canvas-gray cursor-pointer"
                             } border-none`}
@@ -168,6 +190,7 @@ export default function QuestionCard({
                     questionOptions={data.choices.map(c => c.label)}
                     quizTitle={quizTitle}
                     onClose={() => setIsChatOpen(false)}
+                    onMessageCountChange={onMessageCountChange}
                 />
             </div>
         </div>

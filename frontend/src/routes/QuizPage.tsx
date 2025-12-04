@@ -1,10 +1,10 @@
-// Parent component (e.g., a page or a quiz container)
-// For now, use a mock validator. Later, swap to a real POST /answer.
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom"; // <-- add useNavigate
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom"; 
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
+
+type ConfidenceLevel = 0 | 1 | 2;
 
 const API_BASE_URL = "http://localhost:3000/api";
 
@@ -46,15 +46,17 @@ async function getQuestions({quizId,accessCode,}: {
 
 export default function QuizPage() {
     const [answers, setAnswers] = useState<Record<string, string>>({});
+    const [selfConfidenceMap, setSelfConfidenceMap] = useState<Record<string, ConfidenceLevel | null>>({});
     const [questions, setQuestions] = useState<QuestionData[]>([]);
     const [showSubmissions, setShowSubmissions] = useState(false);
     const [submissionResults, setSubmissionResults] = useState<Record<string, boolean>>({});
     const [quizSubmitted, setQuizSubmitted] = useState(false);
     const [submissionSummary, setSubmissionSummary] = useState<{ score: number; total: number } | null>(null);
     const [quizSummary, setQuizSummary] = useState<string | null>(null);
+    const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
+    const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
-    const { user } = useAuth();
-    const navigate = useNavigate();               
+    const { user } = useAuth();         
 
     const studentId = user?.id ? String(user.id) : undefined;
     const [quizTitle, setQuizTitle] = useState<string>("");
@@ -108,22 +110,26 @@ export default function QuizPage() {
         }
 
         // Build questionArray with questionId + givenAns + numMsgs
-        const questionArray = questions.map((q) => {
-            const choiceId = answers[q.id];           // stored selected choice id
-            const choice = q.choices.find(c => c.id === choiceId);
-            const givenAns = choice?.label ?? "";  // send label text (or empty if none)
-            return {
-                questionId: q.id,
-                givenAns,
-                numMsgs: 0,
-            };
-        });
+        const questionArray = questions
+            .map((q) => {
+                const choiceId = answers[q.id];
+                const choice = q.choices.find((c) => c.id === choiceId);
+                const givenAns = choice?.label ?? "";
+                return {
+                    questionId: q.id,
+                    givenAns,
+                    numMsgs: messageCounts[q.id] ?? 0,
+                    selfConfidence: selfConfidenceMap[q.id] ?? null,
+                };
+            })
+            .filter((q) => q.givenAns !== "");      
 
         if (questionArray.filter(q => q.givenAns !== "").length === 0) {
             alert("You have not answered any questions.");
             return;
         }
 
+        setIsSubmittingQuiz(true);
         try {
             const res = await fetch(
                 `${API_BASE_URL}/attempt/submit-quiz`,
@@ -167,6 +173,8 @@ export default function QuizPage() {
         } catch (err) {
             console.error("Quiz submission failed", err);
             alert("Could not submit quiz.");
+        } finally {
+            setIsSubmittingQuiz(false);
         }
     }
 
@@ -187,6 +195,7 @@ export default function QuizPage() {
         const choice = question?.choices.find(c => c.id === choiceId);
         const givenAns = choice?.label ?? choiceId; // fall back to id if label missing
 
+        const selfConfidenceValue = selfConfidenceMap[questionId] ?? null;
         try {
             const res = await fetch(`${API_BASE_URL}/attempt/submit`, {
                 method: "POST",
@@ -196,7 +205,8 @@ export default function QuizPage() {
                     quizId,
                     questionId,
                     givenAns,
-                    numMsgs: 0,
+                    numMsgs: messageCounts[questionId] ?? 0,
+                    selfConfidence: selfConfidenceValue,
                 }),
             });
 
@@ -219,6 +229,20 @@ export default function QuizPage() {
         }
     };
 
+    const handleMessageCountUpdate = useCallback((questionId: string, count: number) => {
+        setMessageCounts((prev) => {
+            if (prev[questionId] === count) return prev;
+            return { ...prev, [questionId]: count };
+        });
+    }, []);
+
+    const handleConfidenceUpdate = useCallback((questionId: string, confidence: ConfidenceLevel) => {
+        setSelfConfidenceMap((prev) => {
+            if (prev[questionId] === confidence) return prev;
+            return { ...prev, [questionId]: confidence };
+        });
+    }, []);
+
     return (
         <div>
             {questions.map((q, idx) => (
@@ -231,12 +255,15 @@ export default function QuizPage() {
                         setAnswers((prev) => ({ ...prev, [q.id]: choiceId }))
                     }
                     studentId={studentId}
-                    lockAfterSubmit={true}
+                    lockAfterSubmit={false}
                     displayNumber={idx + 1}
-                    forceDisabled={quizSubmitted}
+                    forceDisabled={quizSubmitted || isSubmittingQuiz}
                     finalResult={quizSubmitted ? submissionResults[q.id] ?? null : null}
                     quizId={quizId}
+                    onMessageCountChange={(count) => handleMessageCountUpdate(q.id, count)}
                     quizTitle={quizTitle}
+                    selfConfidence={selfConfidenceMap[q.id] ?? null}
+                    onConfidenceChange={(value) => handleConfidenceUpdate(q.id, value)}
                 />
             ))}
 
@@ -254,10 +281,11 @@ export default function QuizPage() {
             )}
 
             <button
-                className="bg bg-canvas-light-blue text-white m-8 p-4 rounded-md"
+                className="bg bg-canvas-light-blue text-white m-8 p-4 rounded-md disabled:opacity-50"
                 onClick={submitQuiz}
+                disabled={isSubmittingQuiz}
             >
-                Submit Quiz
+                {isSubmittingQuiz ? "Submitting..." : "Submit Quiz"}
             </button>
 
             <button
