@@ -243,7 +243,7 @@ export default function QuizPage() {
                         setAnswers((prev) => ({ ...prev, [q.id]: choiceId }))
                     }
                     studentId={studentId}
-                    lockAfterSubmit={true}
+                    lockAfterSubmit={false}
                     displayNumber={idx + 1}
                     forceDisabled={quizSubmitted || isSubmittingQuiz}
                     finalResult={quizSubmitted ? submissionResults[q.id] ?? null : null}
