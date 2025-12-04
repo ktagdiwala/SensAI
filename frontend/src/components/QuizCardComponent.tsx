@@ -26,6 +26,7 @@ type QuestionCardProps = {
     finalResult?: boolean | null;
     quizId?: string;
     onMessageCountChange?: (count: number) => void;
+    quizTitle?: string;
 };
 
 export default function QuestionCard({
@@ -40,6 +41,7 @@ export default function QuestionCard({
     finalResult = null,
     quizId,
     onMessageCountChange,
+    quizTitle,
 }: QuestionCardProps) {
     const [selected, setSelected] = useState<string | null>(selectedProp);
     const [submitting, setSubmitting] = useState(false);
@@ -163,6 +165,10 @@ export default function QuestionCard({
                 <ChatComponent
                     quizId={quizId}
                     questionId={data.id}
+                    questionNumber={displayNumber}
+                    questionText={data.description}
+                    questionOptions={data.choices.map(c => c.label)}
+                    quizTitle={quizTitle}
                     onClose={() => setIsChatOpen(false)}
                     onMessageCountChange={onMessageCountChange}
                 />
