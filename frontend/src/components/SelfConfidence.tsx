@@ -1,3 +1,7 @@
+import SadFace from "../assets/sad.svg";
+import NeutralFace from "../assets/neutral.svg";
+import SmileFace from "../assets/smile.svg";
+
 type ConfidenceValue = 0 | 1 | 2;
 
 type SelfConfidenceProps = {
@@ -7,11 +11,29 @@ type SelfConfidenceProps = {
     name?: string;
 };
 
-const options: { label: string; value: ConfidenceValue }[] = [
-    { label: "Low", value: 0 },
-    { label: "Medium", value: 1 },
-    { label: "High", value: 2 },
+const options: { label: string; value: ConfidenceValue; icon: string }[] = [
+    { label: "Low", value: 0, icon: SadFace },
+    { label: "Medium", value: 1, icon: NeutralFace },
+    { label: "High", value: 2, icon: SmileFace },
 ];
+
+const palette: Record<
+    ConfidenceValue,
+    { idle: string; active: string }
+> = {
+    0: {
+        idle: "bg-red-50 text-red-700 hover:bg-red-100",
+        active: "bg-red-200 text-red-900",
+    },
+    1: {
+        idle: "bg-yellow-50 text-yellow-700 hover:bg-yellow-100",
+        active: "bg-yellow-200 text-yellow-900",
+    },
+    2: {
+        idle: "bg-green-50 text-green-700 hover:bg-green-100",
+        active: "bg-green-200 text-green-900",
+    },
+};
 
 export default function SelfConfidence({
     value,
@@ -28,12 +50,12 @@ export default function SelfConfidence({
                 {options.map((option) => (
                     <label
                         key={option.value}
-                        className={`flex items-center gap-2 px-3 py-2 border rounded-md text-sm cursor-pointer ${
+                        className={`border border-gray-300 flex items-center gap-2 px-3 py-2 rounded-md text-sm cursor-pointer transition ${
                             disabled
                                 ? "opacity-60 cursor-not-allowed"
                                 : value === option.value
-                                    ? "border-canvas-dark-blue text-canvas-dark-blue bg-blue-50"
-                                    : "border-gray-300 text-gray-700 hover:border-canvas-dark-blue"
+                                    ? palette[option.value].active
+                                    : palette[option.value].idle
                         }`}
                     >
                         <input
@@ -44,6 +66,7 @@ export default function SelfConfidence({
                             checked={value === option.value}
                             onChange={() => onChange(option.value)}
                         />
+                        <img src={option.icon} alt={`${option.label} confidence icon`} className="w-5 h-5" />
                         {option.label}
                     </label>
                 ))}
