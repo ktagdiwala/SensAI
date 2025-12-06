@@ -5,6 +5,7 @@ import Homepage from './routes/Homepage';
 import InstructorPage from './routes/InstructorPage';
 import StudentPage from './routes/StudentPage';
 import QuizPage from './routes/QuizPage';
+import AccountPage from './routes/Accountpage';
 import QuizCreatePage from './routes/QuizCreatePage';
 import { AuthProvider, useAuth } from './authentication/AuthContext';
 
@@ -21,6 +22,20 @@ function RoleRoute({ allowedRole, children }: RoleRouteProps) {
   }
 
   return user.role === allowedRole ? children : <Navigate to="/" replace />;
+}
+
+type ProtectedRouteProps = {
+  children: ReactElement;
+};
+
+function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
 }
 
 function AppRoutes() {
@@ -67,6 +82,14 @@ function AppRoutes() {
             <RoleRoute allowedRole="Student">
               <QuizPage />
             </RoleRoute>
+          }
+        />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute>
+              <AccountPage />
+            </ProtectedRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />

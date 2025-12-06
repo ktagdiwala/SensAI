@@ -1,39 +1,55 @@
-import { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useState, useContext, useEffect, type ReactNode } from 'react';
 
-type AuthUser = { id: number; role: 'Instructor' | 'Student' } | null;
+type Role = 'Instructor' | 'Student';
+type AuthUser = { id: number; role: Role } | null;
 
 type AuthContextValue = {
   user: AuthUser;
   setUser: React.Dispatch<React.SetStateAction<AuthUser>>;
 };
 
+const normalizeRole = (role: unknown): Role | null => {
+  if (role === 'Instructor' || role === 'Student') return role;
+  if (role === 'instructor') return 'Instructor';
+  if (role === 'student') return 'Student';
+  return null;
+};
+
+const readPersistedUser = (): AuthUser => {
+  const storedId = localStorage.getItem('userId');
+  const storedRole = normalizeRole(localStorage.getItem('userRole'));
+  return storedId && storedRole ? { id: Number(storedId), role: storedRole } : null;
+};
+
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser>(() => {
-    const storedId = localStorage.getItem('userId');
-    const storedRole = localStorage.getItem('userRole');
-    if (storedId && (storedRole === 'Instructor' || storedRole === 'Student')) {
-      return { id: Number(storedId), role: storedRole };
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser>(readPersistedUser);
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('userId', String(user.id));
+      localStorage.setItem('userRole', user.role);
+    } else {
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
     }
-    return null;
-  });
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function hydrateFromSession() {
       try {
-        const res = await fetch('http://localhost:3000/api/me', {
-          credentials: 'include',
-        });
+        const res = await fetch('http://localhost:3000/api/me', { credentials: 'include' });
         if (!res.ok) {
           if (!cancelled) setUser(null);
           return;
         }
         const data = await res.json();
+        const normalizedRole = normalizeRole(data.role);
         if (!cancelled) {
-          setUser({ id: data.userId, role: data.role });
+          normalizedRole ? setUser({ id: data.userId, role: normalizedRole }) : setUser(null);
         }
       } catch {
         if (!cancelled) setUser(null);
@@ -44,7 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [setUser]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, setUser }}>
