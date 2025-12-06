@@ -30,6 +30,8 @@ type QuestionCardProps = {
     quizTitle?: string;
     selfConfidence?: 0 | 1 | 2 | null;
     onConfidenceChange?: (value: 0 | 1 | 2) => void;
+    onResetQuestion?: () => void;
+    chatResetKey?: number;
 };
 
 export default function QuestionCard({
@@ -47,22 +49,30 @@ export default function QuestionCard({
     quizTitle,
     selfConfidence = null,
     onConfidenceChange,
+    onResetQuestion,
+    chatResetKey = 0,
 }: QuestionCardProps) {
     const [selected, setSelected] = useState<string | null>(selectedProp);
     const [submitting, setSubmitting] = useState(false);
     const [feedback, setFeedback] = useState<AnswerFeedback | null>(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
 
-    const disabled = forceDisabled || submitting || (lockAfterSubmit && !!feedback);
-    const confidence = selfConfidence ?? null;
-    const checkAnswerDisabled = !selected || disabled || confidence === null;
+    const hasCheckedAnswer = feedback !== null;
+    const disabled = forceDisabled || submitting || hasCheckedAnswer;
+    const checkAnswerDisabled =
+        !selected || submitting || forceDisabled || selfConfidence === null || hasCheckedAnswer;
+    const canReset = !forceDisabled && hasCheckedAnswer;
 
     useEffect(() => {
         setSelected(selectedProp ?? null);
     }, [selectedProp]);
 
+    useEffect(() => {
+        setFeedback(null);
+    }, [data.id]);
+
     async function onCheckAnswer() {
-        if (!selected || confidence === null) return;
+        if (!selected || selfConfidence === null) return;
         setSubmitting(true);
         try {
             const res = await validate({ questionId: data.id, choiceId: selected, studentId });
@@ -81,6 +91,13 @@ export default function QuestionCard({
     function handleConfidenceChange(value: 0 | 1 | 2) {
         if (disabled) return;
         onConfidenceChange?.(value);
+    }
+
+    function handleResetQuestion() {
+        if (forceDisabled) return;
+        setSelected(null);
+        setFeedback(null);
+        onResetQuestion?.();
     }
 
     return (
@@ -137,14 +154,14 @@ export default function QuestionCard({
 
                     {/**Self Confidence */}
                     <SelfConfidence
-                        value={confidence}
+                        value={selfConfidence}
                         onChange={handleConfidenceChange}
                         disabled={disabled}
                         name={`self-confidence-${data.id}`}
                     />
 
                     {/**Submit*/}
-                    <div className="text-center mt-6">
+                    <div className="flex flex-wrap justify-center gap-3 mt-6">
                         <button
                             onClick={onCheckAnswer}
                             disabled={checkAnswerDisabled}
@@ -156,6 +173,19 @@ export default function QuestionCard({
                         >
                             {submitting ? "Checking…" : "Check Answer"}
                         </button>
+
+                        {hasCheckedAnswer && (
+                            <button
+                                type="button"
+                                onClick={handleResetQuestion}
+                                disabled={!canReset}
+                                className={`px-6 py-3 rounded-sm font-semibold border border-canvas-dark-blue text-canvas-dark-blue bg-white ${
+                                    canReset ? "hover:bg-gray-50 cursor-pointer" : "opacity-50 cursor-not-allowed"
+                                }`}
+                            >
+                                Reset Question
+                            </button>
+                        )}
                     </div>
 
                     {feedback && (
@@ -183,6 +213,7 @@ export default function QuestionCard({
                 aria-hidden={!isChatOpen}
             >
                 <ChatComponent
+                    key={`chat-${data.id}-${chatResetKey}`}
                     quizId={quizId}
                     questionId={data.id}
                     questionNumber={displayNumber}
