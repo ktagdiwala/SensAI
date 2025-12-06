@@ -1,6 +1,6 @@
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
 import { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom"; 
+import { useParams } from "react-router-dom"; 
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
 
@@ -55,6 +55,7 @@ export default function QuizPage() {
     const [quizSummary, setQuizSummary] = useState<string | null>(null);
     const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
     const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
+    const [chatResetSignals, setChatResetSignals] = useState<Record<string, number>>({});
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();         
 
@@ -243,11 +244,22 @@ export default function QuizPage() {
         });
     }, []);
 
+    const handleResetQuestion = useCallback((questionId: string) => {
+        setAnswers((prev) => {
+            const next = { ...prev };
+            delete next[questionId];
+            return next;
+        });
+        setSelfConfidenceMap((prev) => ({ ...prev, [questionId]: null }));
+        setMessageCounts((prev) => ({ ...prev, [questionId]: 0 }));
+        setChatResetSignals((prev) => ({ ...prev, [questionId]: (prev[questionId] ?? 0) + 1 }));
+    }, []);
+
     return (
         <div>
             {questions.map((q, idx) => (
                 <QuestionCard
-                    key={q.id}
+                    key={`${q.id}-${idx}`}
                     data={q}
                     validate={submitAnswer}
                     selected={answers[q.id] ?? null}
@@ -264,6 +276,8 @@ export default function QuizPage() {
                     quizTitle={quizTitle}
                     selfConfidence={selfConfidenceMap[q.id] ?? null}
                     onConfidenceChange={(value) => handleConfidenceUpdate(q.id, value)}
+                    onResetQuestion={() => handleResetQuestion(q.id)}
+                    chatResetKey={chatResetSignals[q.id] ?? 0}
                 />
             ))}
 
