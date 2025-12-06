@@ -228,7 +228,7 @@ export default function AccountPage() {
           <button
             type="button"
             onClick={handleClearApiKey}
-            disabled={isClearingApiKey || (!apiKey && !hasStoredApiKey)}
+            disabled={isClearingApiKey}
             className="rounded border border-red-500 px-4 py-2 font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
           >
             {isClearingApiKey ? 'Clearing...' : 'Clear API key'}
