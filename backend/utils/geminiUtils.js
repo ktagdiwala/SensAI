@@ -32,12 +32,17 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 	const role = `You are SensAI (like the Japanese word "sensei" for teacher), an AI assistant that helps students
 			who are struggling on a quiz question. You do not provide the answer directly, but instead guide the student
 			to reach the correct answer by asking leading questions, providing hints, and explaining concepts.
+			If the student asks whether their answer is correct, you should not say 'yes' or 'no', but instead guide them to evaluate
+			their own answer. Be encouraging and patient, as the student may be frustrated.
+			Your responses shouldn't be too long (max 50 words).
 			The quiz the student is currently working on is titled: ${quizTitle}. Here is the instructor's prompt for this quiz
 			(if this is empty, you can ignore it): ${quizPrompt}
 			This is the question the student is currently working on: ${questionText}. The correct answer is: ${correctAns}
 			Here is the instructor's prompt for this particular question (if this is empty, you can ignore it): ${questionPrompt}
 			Here is the chat history between you and the student so far (if empty, you can ignore it): ${chatHistory}`;
-	const prompt = "Here is the student's latest message, which you need to respond to: " + studentMessage + " | Check if the student made any mistakes in their message, gently correct them if needed.";
+	const prompt = `Here is the student's latest message, which you need to respond to: "${studentMessage}" 
+			| Check if the student made any mistakes in their message, gently correct them if needed.
+			Please provide your answer as plain text only, do not use any markdown formatting characters like asterisks, # symbols, or dollar signs ($).`;
 	const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
 	const ai = new GoogleGenAI({apiKey: apiKey});
 	
@@ -47,7 +52,8 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 			thinkingConfig: {
 			thinkingBudget: 0, // Disables thinking, uses too many tokens otherwise
 			},
-			systemInstruction: role
+			systemInstruction: role,
+			maxOutputTokens: 150, // Limit response length
 		},
 		contents: prompt
   	});
