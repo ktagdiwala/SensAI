@@ -56,6 +56,7 @@ export default function QuizPage() {
     const [messageCounts, setMessageCounts] = useState<Record<string, number>>({});
     const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
     const [chatResetSignals, setChatResetSignals] = useState<Record<string, number>>({});
+    const [checkedQuestions, setCheckedQuestions] = useState<Record<string, boolean>>({});
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
     const { user } = useAuth();         
 
@@ -110,7 +111,7 @@ export default function QuizPage() {
             return;
         }
 
-        // Build questionArray with questionId + givenAns + numMsgs
+        // Build questionArray with questionId + givenAns + numMsgs + hasCheckedAnswer
         const questionArray = questions
             .map((q) => {
                 const choiceId = answers[q.id];
@@ -121,12 +122,13 @@ export default function QuizPage() {
                     givenAns,
                     numMsgs: messageCounts[q.id] ?? 0,
                     selfConfidence: selfConfidenceMap[q.id] ?? null,
+                    hasCheckedAnswer: checkedQuestions[q.id] ?? false,
                 };
-            })
-            .filter((q) => q.givenAns !== "");      
+            });      
 
-        if (questionArray.filter(q => q.givenAns !== "").length === 0) {
-            alert("You have not answered any questions.");
+        const answeredQuestions = questionArray.filter(q => q.givenAns !== "");
+        if (answeredQuestions.length < 2) {
+            alert("You must answer at least 2 questions before submitting.");
             return;
         }
 
@@ -252,7 +254,12 @@ export default function QuizPage() {
         });
         setSelfConfidenceMap((prev) => ({ ...prev, [questionId]: null }));
         setMessageCounts((prev) => ({ ...prev, [questionId]: 0 }));
+        setCheckedQuestions((prev) => ({ ...prev, [questionId]: false }));
         setChatResetSignals((prev) => ({ ...prev, [questionId]: (prev[questionId] ?? 0) + 1 }));
+    }, []);
+
+    const handleQuestionChecked = useCallback((questionId: string) => {
+        setCheckedQuestions((prev) => ({ ...prev, [questionId]: true }));
     }, []);
 
     return (
@@ -277,6 +284,7 @@ export default function QuizPage() {
                     selfConfidence={selfConfidenceMap[q.id] ?? null}
                     onConfidenceChange={(value) => handleConfidenceUpdate(q.id, value)}
                     onResetQuestion={() => handleResetQuestion(q.id)}
+                    onQuestionChecked={() => handleQuestionChecked(q.id)}
                     chatResetKey={chatResetSignals[q.id] ?? 0}
                 />
             ))}
