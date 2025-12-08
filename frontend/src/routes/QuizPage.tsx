@@ -57,7 +57,7 @@ export default function QuizPage() {
     const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
     const [chatResetSignals, setChatResetSignals] = useState<Record<string, number>>({});
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
-    const { user } = useAuth();
+    const { user, setUser } = useAuth();
     const navigate = useNavigate();               
     // Guard to avoid re-entrant popstate handling
     const ignoringPopRef = (window as any).__sensaiIgnoringPopRef ?? { value: false };
@@ -125,6 +125,13 @@ export default function QuizPage() {
         }
     };
 
+    // Store chats in sessionStorage for logout access
+    useEffect(() => {
+        if (chatMap && Object.keys(chatMap).length > 0) {
+            sessionStorage.setItem('unsubmittedChats', JSON.stringify(chatMap));
+        }
+    }, [chatMap]);
+
     // Handle browser refresh/close with alert and save
     useEffect(() => {
         if (quizSubmitted) return;
@@ -139,12 +146,34 @@ export default function QuizPage() {
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [quizSubmitted, chatMap, quizId]);
 
-    // Intercept navigation to other routes (React Router links)
+    // Intercept navigation to other routes (React Router links) and logout button
     useEffect(() => {
         if (quizSubmitted) return;
 
         const handleClick = async (e: MouseEvent) => {
             const target = e.target as HTMLElement;
+            
+            // Check if logout button was clicked
+            const logoutButton = target.closest('button[onClick*="Logout"]') || 
+                                (target.closest('button') && target.textContent?.includes('Logout'));
+            
+            if (logoutButton) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                const confirmLeave = window.confirm(
+                    "Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress."
+                );
+                if (confirmLeave) {
+                    await saveAllChats();
+                    // Use the same logout logic as nav.tsx
+                    setUser(null);
+                    navigate('/');
+                }
+                return false;
+            }
+            
             // Check for any anchor tag or element with role="link"
             const link = target.closest('a, [role="link"]');
             
