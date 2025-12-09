@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
+import { jsPDF } from "jspdf";
 
 type ConfidenceLevel = 0 | 1 | 2;
 
@@ -456,6 +457,98 @@ export default function QuizPage() {
         setChatResetSignals((prev) => ({ ...prev, [questionId]: (prev[questionId] ?? 0) + 1 }));
     }, []);
 
+    const downloadAllChats = () => {
+        // Check if there are any chats to download
+        const hasChats = Object.values(chatMap).some(chats => chats && chats.length > 0);
+        if (!hasChats) {
+            alert("No chat history to download.");
+            return;
+        }
+
+        // Sanitize quiz title for filename
+        const safeTitle = quizTitle
+            ? quizTitle.replace(/[^a-z0-9\-_]+/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '')
+            : `quiz${quizId}`;
+
+        // Create PDF
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        const maxWidth = pageWidth - 2 * margin;
+        let yPosition = margin;
+
+        // Title
+        doc.setFontSize(16);
+        doc.text("SensAI Chat History - All Questions", margin, yPosition);
+        yPosition += 10;
+
+        // Quiz Title
+        if (quizTitle) {
+            doc.setFontSize(12);
+            doc.text(`Quiz: ${quizTitle}`, margin, yPosition);
+            yPosition += 8;
+        }
+
+        // Iterate through all questions and their chats
+        questions.forEach((question, idx) => {
+            const messages = chatMap[question.id];
+            
+            // Skip if no chats for this question
+            if (!messages || messages.length === 0) {
+                return;
+            }
+
+            // Add question heading
+            doc.setFontSize(14);
+            doc.text(`Question ${idx + 1}: ${question.description}`, margin, yPosition);
+            yPosition += 8;
+
+            // Add question options if available
+            if (question.choices && question.choices.length > 0) {
+                doc.setFontSize(11);
+                question.choices.forEach((choice) => {
+                    const optText = `- ${choice.label}`;
+                    const lines = doc.splitTextToSize(optText, maxWidth);
+                    if (yPosition + lines.length * 7 > pageHeight - margin) {
+                        doc.addPage();
+                        yPosition = margin;
+                    }
+                    doc.text(lines, margin, yPosition);
+                    yPosition += lines.length * 7;
+                });
+                yPosition += 3;
+            }
+
+            // Add chat messages
+            doc.setFontSize(11);
+            messages.forEach((msg) => {
+                const role = msg.role === "user" ? "Student" : "SensAI";
+                const prefix = `${role}: `;
+                const lines = doc.splitTextToSize(prefix + msg.content, maxWidth);
+
+                // Check if we need a new page
+                if (yPosition + lines.length * 7 > pageHeight - margin) {
+                    doc.addPage();
+                    yPosition = margin;
+                }
+
+                doc.text(lines, margin, yPosition);
+                yPosition += lines.length * 7 + 5; // line height + spacing
+            });
+
+            // Add spacing between questions
+            yPosition += 10;
+            if (yPosition > pageHeight - margin - 10) {
+                doc.addPage();
+                yPosition = margin;
+            }
+        });
+
+        // Download PDF
+        doc.save(`${safeTitle}_all_chats.pdf`);
+    };
+
     return (
         <div>
             {questions.map((q, idx) => (
@@ -511,6 +604,13 @@ export default function QuizPage() {
                 onClick={() => setShowSubmissions((prev) => !prev)}
             >
                 {showSubmissions ? "Hide" : "View"} Quiz Submissions
+            </button>
+
+            <button
+                className="bg-blue-500 text-white m-8 p-2 rounded-md hover:bg-blue-600"
+                onClick={downloadAllChats}
+            >
+                Download All Chats
             </button>
 
             {showSubmissions && (
