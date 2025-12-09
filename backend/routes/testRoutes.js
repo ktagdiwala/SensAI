@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../config/dbConnection');
+const { cleanupUserAttempts, cleanupUser } = require('../utils/testUtils');
 
 // DELETE /test/cleanup-attempts
 // Delete all attempts for a specific user (used by E2E tests)
@@ -12,10 +12,12 @@ router.delete('/cleanup-attempts', async (req, res) => {
 	}
 
 	try {
-		await pool.query('DELETE FROM question_attempt WHERE userId = ?', [userId]);
-		return res.status(200).json({ message: 'Attempts deleted successfully' });
+		const result = await cleanupUserAttempts(userId);
+		return res.status(200).json({ 
+			message: 'Attempts deleted successfully',
+			deletedRows: result.deletedRows 
+		});
 	} catch (error) {
-		console.error('Error deleting attempts:', error);
 		return res.status(500).json({ message: 'Error deleting attempts' });
 	}
 });
@@ -30,10 +32,12 @@ router.delete('/cleanup-user', async (req, res) => {
 	}
 
 	try {
-		await pool.query('DELETE FROM user WHERE userId = ?', [userId]);
-		return res.status(200).json({ message: 'User deleted successfully' });
+		const result = await cleanupUser(userId);
+		return res.status(200).json({ 
+			message: 'User deleted successfully',
+			deletedRows: result.deletedRows 
+		});
 	} catch (error) {
-		console.error('Error deleting user:', error);
 		return res.status(500).json({ message: 'Error deleting user' });
 	}
 });

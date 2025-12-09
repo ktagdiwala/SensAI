@@ -20,17 +20,33 @@ type ChatComponentProps = {
     questionNumber?: number;
     questionText?: string;
     questionOptions?: string[];
+    onMessagesChange?: (messages: Message[]) => void;
+    initialMessages?: Message[];
+    isOpen?: boolean;
     onMessageCountChange?: (count: number) => void;
 };
 
 
-export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions, onMessageCountChange }: ChatComponentProps) {
-    const [messages, setMessages] = useState<Message[]>([]);
+export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions, onMessagesChange, initialMessages, isOpen, onMessageCountChange }: ChatComponentProps) {
+    const [messages, setMessages] = useState<Message[]>(initialMessages || []);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
     const [quizTitle, setQuizTitle] = useState<string>(quizTitleProp || "");
     const chatSectionRef = useRef<HTMLDivElement>(null);
     const prevUserCount = useRef(0);
+
+    // Update messages when initialMessages prop changes (for loading saved chats)
+    useEffect(() => {
+        if (initialMessages && initialMessages.length > 0) {
+            setMessages(initialMessages);
+            // Scroll to bottom when loading saved chats
+            setTimeout(() => {
+                if (chatSectionRef.current) {
+                    chatSectionRef.current.scrollTop = chatSectionRef.current.scrollHeight;
+                }
+            }, 150);
+        }
+    }, [initialMessages]);
 
     // Fetch quiz title only if not provided as prop
     useEffect(() => {
@@ -58,12 +74,27 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
         sendMessage();
     };
 
-    // Scroll to bottom when messages change
+    // Scroll to bottom when new messages arrive (user sends message or AI responds)
     useEffect(() => {
-        if (chatSectionRef.current) {
-            chatSectionRef.current.scrollTop = chatSectionRef.current.scrollHeight;
+        if (messages.length > 0 && chatSectionRef.current) {
+            setTimeout(() => {
+                if (chatSectionRef.current) {
+                    chatSectionRef.current.scrollTop = chatSectionRef.current.scrollHeight;
+                }
+            }, 0);
         }
     }, [messages]);
+
+    // Scroll to bottom when chat window opens
+    useEffect(() => {
+        if (isOpen && chatSectionRef.current) {
+            setTimeout(() => {
+                if (chatSectionRef.current) {
+                    chatSectionRef.current.scrollTop = chatSectionRef.current.scrollHeight;
+                }
+            }, 100);
+        }
+    }, [isOpen]);
 
     const sendMessage = async () => {
         if (!input.trim() || sending) return;
@@ -84,7 +115,11 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
         const userMessage: Message = { id: `${timestamp}-user`, role: "user", content: trimmed };
         const chatHistory = [...messages, userMessage].map((m) => `${m.role}: ${m.content}`).join("\n");
 
-        setMessages((prev) => [...prev, userMessage]);
+        setMessages((prev) => {
+            const next = [...prev, userMessage];
+            onMessagesChange?.(next);
+            return next;
+        });
         setInput("");
         setSending(true);
 
@@ -100,23 +135,31 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
 
             const data = await res.json();
 
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: `${Date.now()}-ai`,
-                    role: "ai",
-                    content: data?.response ?? "No response from AI.",
-                },
-            ]);
+            setMessages((prev) => {
+                const next: Message[] = [
+                    ...prev,
+                    {
+                        id: `${Date.now()}-ai`,
+                        role: "ai" as const,
+                        content: data?.response ?? "No response from AI.",
+                    },
+                ];
+                onMessagesChange?.(next);
+                return next;
+            });
         } catch (error) {
-            setMessages((prev) => [
-                ...prev,
-                {
-                    id: `${Date.now()}-ai`,
-                    role: "ai",
-                    content: "Sorry, I couldn't reach the assistant. Please try again.",
-                },
-            ]);
+            setMessages((prev) => {
+                const next: Message[] = [
+                    ...prev,
+                    {
+                        id: `${Date.now()}-ai`,
+                        role: "ai" as const,
+                        content: "Sorry, I couldn't reach the assistant. Please try again.",
+                    },
+                ];
+                onMessagesChange?.(next);
+                return next;
+            });
         } finally {
             setSending(false);
         }

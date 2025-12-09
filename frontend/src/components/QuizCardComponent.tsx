@@ -28,6 +28,8 @@ type QuestionCardProps = {
     quizId?: string;
     onMessageCountChange?: (count: number) => void;
     quizTitle?: string;
+    onChatUpdate?: (questionId: string, messages: any[]) => void;
+    initialChatMessages?: any[];
     selfConfidence?: 0 | 1 | 2 | null;
     onConfidenceChange?: (value: 0 | 1 | 2) => void;
     onResetQuestion?: () => void;
@@ -48,6 +50,8 @@ export default function QuestionCard({
     quizId,
     onMessageCountChange,
     quizTitle,
+    onChatUpdate,
+    initialChatMessages,
     selfConfidence = null,
     onConfidenceChange,
     onResetQuestion,
@@ -223,7 +227,10 @@ export default function QuestionCard({
                     questionText={data.description}
                     questionOptions={data.choices.map(c => c.label)}
                     quizTitle={quizTitle}
+                    onMessagesChange={(msgs) => onChatUpdate?.(data.id, msgs)}
                     onClose={() => setIsChatOpen(false)}
+                    initialMessages={initialChatMessages}
+                    isOpen={isChatOpen}
                     onMessageCountChange={onMessageCountChange}
                 />
             </div>

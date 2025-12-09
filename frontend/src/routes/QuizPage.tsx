@@ -1,6 +1,6 @@
 import QuestionCard, { type QuestionData, type AnswerFeedback } from "../components/QuizCardComponent";
-import { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom"; 
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
 
@@ -58,11 +58,194 @@ export default function QuizPage() {
     const [chatResetSignals, setChatResetSignals] = useState<Record<string, number>>({});
     const [checkedQuestions, setCheckedQuestions] = useState<Record<string, boolean>>({});
     const { quizId, accessCode } = useParams<{ quizId: string; accessCode: string }>();
-    const { user } = useAuth();         
+    const { user, setUser } = useAuth();
+    const navigate = useNavigate();               
+    // Guard to avoid re-entrant popstate handling
+    const ignoringPopRef = (window as any).__sensaiIgnoringPopRef ?? { value: false };
+    (window as any).__sensaiIgnoringPopRef = ignoringPopRef;
+    const popGuardRef = useRef(false);
 
     const studentId = user?.id ? String(user.id) : undefined;
     const [quizTitle, setQuizTitle] = useState<string>("");
+    const [chatMap, setChatMap] = useState<Record<string, any[]>>({});
 
+    // Collect chat updates from ChatComponent
+    const handleChatUpdate = (questionId: string, messages: any[]) => {
+        setChatMap((prev) => ({ ...prev, [questionId]: messages }));
+    };
+
+    // Load existing chat history for all questions
+    const loadChatHistory = async () => {
+        try {
+            if (!quizId || !questions.length) return;
+            const loadedChats: Record<string, any[]> = {};
+            for (const question of questions) {
+                const res = await fetch(`${API_BASE_URL}/chat/${quizId}/${question.id}`, {
+                    credentials: 'include',
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.chat && Array.isArray(data.chat) && data.chat.length > 0) {
+                        loadedChats[question.id] = data.chat;
+                    }
+                }
+            }
+            if (Object.keys(loadedChats).length > 0) {
+                setChatMap(loadedChats);
+            }
+        } catch (err) {
+            console.error('Failed to load chat history:', err);
+        }
+    };
+
+    // Save all chats to backend
+    const saveAllChats = async (useBeacon: boolean = false) => {
+        try {
+            if (!quizId) return;
+            const chats = Object.entries(chatMap)
+                .filter(([_, chat]) => chat && chat.length > 0)
+                .map(([questionId, chat]) => ({ quizId, questionId, chat }));
+            if (chats.length === 0) return;
+            const url = `${API_BASE_URL}/chat/save-batch`;
+            const payload = JSON.stringify({ chats });
+            if (useBeacon && typeof navigator.sendBeacon === 'function') {
+                const blob = new Blob([payload], { type: 'application/json' });
+                navigator.sendBeacon(url, blob);
+            } else {
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: payload,
+                    keepalive: true,
+                    mode: 'cors',
+                });
+            }
+        } catch (_) {
+            // swallow errors; navigation shouldn't be blocked due to save failure
+        }
+    };
+
+    // Store chats in sessionStorage for logout access
+    useEffect(() => {
+        if (chatMap && Object.keys(chatMap).length > 0) {
+            sessionStorage.setItem('unsubmittedChats', JSON.stringify(chatMap));
+        }
+    }, [chatMap]);
+
+    // Handle browser refresh/close with alert and save
+    useEffect(() => {
+        if (quizSubmitted) return;
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            // Show browser's native confirmation dialog
+            e.preventDefault();
+            e.returnValue = '';
+            // Save via beacon when user confirms leaving
+            saveAllChats(true);
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [quizSubmitted, chatMap, quizId]);
+
+    // Intercept navigation to other routes (React Router links) and logout button
+    useEffect(() => {
+        if (quizSubmitted) return;
+
+        const handleClick = async (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            
+            // Check if logout button was clicked
+            const logoutButton = target.closest('button[onClick*="Logout"]') || 
+                                (target.closest('button') && target.textContent?.includes('Logout'));
+            
+            if (logoutButton) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                
+                const confirmLeave = window.confirm(
+                    "Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress."
+                );
+                if (confirmLeave) {
+                    await saveAllChats();
+                    // Use the same logout logic as nav.tsx
+                    setUser(null);
+                    navigate('/');
+                }
+                return false;
+            }
+            
+            // Check for any anchor tag or element with role="link"
+            const link = target.closest('a, [role="link"]');
+            
+            if (link) {
+                // Get the target path from href or data attributes
+                const href = link.getAttribute('href');
+                const currentPath = window.location.pathname;
+                
+                // Check if navigating away from current quiz page
+                if (href && href !== currentPath && !href.startsWith('#')) {
+                    const confirmLeave = window.confirm(
+                        "Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress."
+                    );
+                    if (!confirmLeave) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        return false;
+                    } else {
+                        // Prevent default navigation, save, then navigate programmatically
+                        e.preventDefault();
+                        e.stopPropagation();
+                        try {
+                            await saveAllChats();
+                        } finally {
+                            if (href) {
+                                navigate(href);
+                            }
+                        }
+                        return false;
+                    }
+                }
+            }
+        };
+
+        // Use capture phase to intercept before React Router
+        document.addEventListener('click', handleClick, { capture: true });
+        
+        // Push a state entry so back button will trigger popstate
+        window.history.pushState(null, '', window.location.pathname);
+        
+        // Back button interception: prompt, save on OK, then navigate back
+        const onPopState = async () => {
+            if (popGuardRef.current) { 
+                popGuardRef.current = false; 
+                return; 
+            }
+            
+            // Push state back to stay on current page while showing dialog
+            window.history.pushState(null, '', window.location.pathname);
+            
+            const confirmLeave = window.confirm(
+                "Are you sure you want to leave? Your chat history will be saved, but you may lose unsaved quiz progress."
+            );
+            
+            if (confirmLeave) {
+                // User confirmed - save chats and navigate
+                popGuardRef.current = true;
+                await saveAllChats();
+                navigate('/students');
+                window.scrollTo(0, 0);
+            }
+            // If cancelled, we already pushed state above so we stay on page
+        };
+        window.addEventListener('popstate', onPopState);
+
+        return () => {
+            document.removeEventListener('click', handleClick, { capture: true });
+            window.removeEventListener('popstate', onPopState);
+        };
+    }, [quizSubmitted, chatMap, quizId, navigate]);
     useEffect(() => {
         if (!quizId || !accessCode) return;
 
@@ -76,17 +259,17 @@ export default function QuizPage() {
 
             const typedRows: QuizApiQuestion[] = rows as QuizApiQuestion[];
 
-            setQuestions(
-                typedRows.map((row) => ({
-                    id: String(row.questionId),
-                    description: row.title ?? "",
-                    points: 1,
-                    choices: (row.options ?? []).map((label, idx) => ({
-                        id: `choice-${row.questionId}-${idx}`,
-                        label,
-                    })),
-                }))
-            );
+            const questionData = typedRows.map((row) => ({
+                id: String(row.questionId),
+                description: row.title ?? "",
+                points: 1,
+                choices: (row.options ?? []).map((label, idx) => ({
+                    id: `choice-${row.questionId}-${idx}`,
+                    label,
+                })),
+            }));
+            
+            setQuestions(questionData);
         });
 
         // Fetch quiz details (student-accessible) to get the title
@@ -100,6 +283,14 @@ export default function QuizPage() {
             })
             .catch(() => {});
     }, [quizId, accessCode]);
+
+    // Load chat history after questions are loaded
+    useEffect(() => {
+        if (questions.length > 0 && quizId) {
+            loadChatHistory();
+        }
+    }, [questions.length, quizId]);
+
 
 
     
@@ -170,6 +361,16 @@ export default function QuizPage() {
             setQuizSubmitted(true);
             setSubmissionSummary({ score, total: totalQuestions });
             setQuizSummary(summary);
+
+            // Delete all chat history for this quiz after successful submission
+            try {
+                await fetch(`${API_BASE_URL}/chat/${quizId}`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                });
+            } catch (err) {
+                console.error('Failed to delete chat history:', err);
+            }
 
             alert("Quiz submitted.");
 
@@ -281,6 +482,8 @@ export default function QuizPage() {
                     quizId={quizId}
                     onMessageCountChange={(count) => handleMessageCountUpdate(q.id, count)}
                     quizTitle={quizTitle}
+                    onChatUpdate={handleChatUpdate}
+                    initialChatMessages={chatMap[q.id] || []}
                     selfConfidence={selfConfidenceMap[q.id] ?? null}
                     onConfidenceChange={(value) => handleConfidenceUpdate(q.id, value)}
                     onResetQuestion={() => handleResetQuestion(q.id)}
@@ -309,6 +512,7 @@ export default function QuizPage() {
             >
                 {isSubmittingQuiz ? "Submitting..." : "Submit Quiz"}
             </button>
+
 
             <button
                 className="bg-gray-200 text-gray-800 m-8 p-2 rounded-md"
