@@ -410,8 +410,10 @@ async function getPreviousQuizAttempts(userId, quizId){
 				totalAttemptQuestions
 			});
 
-			// Track highest score (by raw score); if tie, keep earliest max
-			if(scoreValue > maxScore){
+			// Track highest score (by raw score); if tie, pick the most recent attempt
+			const isNewMax = scoreValue > maxScore;
+			const isTieWithMoreRecent = scoreValue === maxScore && (!maxScoreDatetime || new Date(attempt.dateTime) > new Date(maxScoreDatetime));
+			if(isNewMax || isTieWithMoreRecent){
 				maxScore = scoreValue;
 				maxScoreDatetime = attempt.dateTime;
 				maxScoreTotalQuestions = totalQuestionsForQuiz;
