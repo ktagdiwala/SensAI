@@ -354,6 +354,13 @@ async function getStudentQuestionAttemptsForQuiz(userId, quizId, dateTime){
  */
 async function getPreviousQuizAttempts(userId, quizId){
 	try{
+		// Total number of questions in this quiz (used to contextualize scores)
+		const [quizQuestionCountRows] = await pool.query(
+			'SELECT COUNT(*) AS totalQuestions FROM question WHERE quizId = ?',
+			[quizId]
+		);
+		const totalQuestionsForQuiz = quizQuestionCountRows?.[0]?.totalQuestions || 0;
+
 		// Get all unique attempt datetimes for this student-quiz pair
 		const attemptsQuery = `
 			SELECT DISTINCT dateTime 
@@ -379,26 +386,23 @@ async function getPreviousQuizAttempts(userId, quizId){
 
 		for(const attempt of attempts){
 			const scoreQuery = `
-				SELECT COUNT(*) as totalQuestions, 
-					   SUM(CASE WHEN isCorrect = 1 THEN 1 ELSE 0 END) as score
+				SELECT SUM(CASE WHEN isCorrect = 1 THEN 1 ELSE 0 END) as score
 				FROM question_attempt
 				WHERE userId = ? AND quizId = ? AND dateTime = ?
 			`;
 			const [scoreResults] = await pool.query(scoreQuery, [userId, quizId, attempt.dateTime]);
-			
-			if(scoreResults.length > 0){
-				const { totalQuestions, score } = scoreResults[0];
-				attemptDetails.push({
-					datetime: attempt.dateTime,
-					score: score || 0,
-					totalQuestions: totalQuestions || 0
-				});
+			const scoreValue = scoreResults?.[0]?.score || 0;
 
-				// Track highest score
-				if((score || 0) > maxScore){
-					maxScore = score || 0;
-					maxScoreDatetime = attempt.dateTime;
-				}
+			attemptDetails.push({
+				datetime: attempt.dateTime,
+				score: scoreValue,
+				totalQuestions: totalQuestionsForQuiz
+			});
+
+			// Track highest score
+			if(scoreValue > maxScore){
+				maxScore = scoreValue;
+				maxScoreDatetime = attempt.dateTime;
 			}
 		}
 
@@ -406,7 +410,8 @@ async function getPreviousQuizAttempts(userId, quizId){
 			totalAttempts: attempts.length,
 			previousAttempts: attemptDetails,
 			highestScore: maxScore >= 0 ? maxScore : null,
-			highestScoreDatetime: maxScoreDatetime
+			highestScoreDatetime: maxScoreDatetime,
+			totalQuestions: totalQuestionsForQuiz
 		};
 	}catch(error){
 		console.error("Error retrieving previous quiz attempts: ", error);
@@ -414,7 +419,8 @@ async function getPreviousQuizAttempts(userId, quizId){
 			totalAttempts: 0,
 			previousAttempts: [],
 			highestScore: null,
-			highestScoreDatetime: null
+			highestScoreDatetime: null,
+			totalQuestions: 0
 		};
 	}
 }
