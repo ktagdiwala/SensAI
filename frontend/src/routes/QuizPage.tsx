@@ -499,25 +499,28 @@ export default function QuizPage() {
                 return;
             }
 
-            // Add question heading
-            doc.setFontSize(14);
-            doc.text(`Question ${idx + 1}: ${question.description}`, margin, yPosition);
-            yPosition += 8;
+            // Add question heading and content
+            doc.setFontSize(12);
+            const qHeading = `Question ${idx + 1}: ${question.description}`;
+            const qLines = doc.splitTextToSize(qHeading, maxWidth);
+            if (yPosition + qLines.length * 7 > pageHeight - margin) {
+                doc.addPage();
+                yPosition = margin;
+            }
+            doc.text(qLines, margin, yPosition);
+            yPosition += qLines.length * 7 + 1;
 
             // Add question options if available
             if (question.choices && question.choices.length > 0) {
                 doc.setFontSize(11);
-                question.choices.forEach((choice) => {
-                    const optText = `- ${choice.label}`;
-                    const lines = doc.splitTextToSize(optText, maxWidth);
-                    if (yPosition + lines.length * 7 > pageHeight - margin) {
-                        doc.addPage();
-                        yPosition = margin;
-                    }
-                    doc.text(lines, margin, yPosition);
-                    yPosition += lines.length * 7;
-                });
-                yPosition += 3;
+                const bulletOptions = question.choices.map((choice) => `- ${choice.label}`);
+                const optLines = doc.splitTextToSize(bulletOptions.join("\n"), maxWidth);
+                if (yPosition + optLines.length * 7 > pageHeight - margin) {
+                    doc.addPage();
+                    yPosition = margin;
+                }
+                doc.text(optLines, margin, yPosition);
+                yPosition += optLines.length * 7 + 1;
             }
 
             // Add chat messages
