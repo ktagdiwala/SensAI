@@ -65,13 +65,24 @@ export default function StudentPage() {
                 if (previousAttemptsRes.ok) {
                     const attemptData = await previousAttemptsRes.json();
                     if (attemptData.totalAttempts > 0) {
-                        // User has previous attempts - show them before continuing
+                        const rawTotal = attemptData.totalQuestions || attemptData.highestScoreTotalQuestions || attemptData.previousAttempts?.[0]?.totalQuestions || 0;
+                        const quizTotalQuestions = rawTotal && rawTotal > 0 ? rawTotal : 'unknown';
+
+                        // User has previous attempts - show them before continuing (denominator is quiz total)
                         const attemptSummary = attemptData.previousAttempts
-                            .map((attempt: any) => `${attempt.datetime}: Score ${attempt.score}/${attempt.totalQuestions}`)
+                            .map((attempt: any) => `${attempt.datetime}: Score ${attempt.score}/${quizTotalQuestions}`)
                             .join("\n");
                         
+                        const highestScoreLine = attemptData.highestScore !== null
+                            ? `Highest Score: ${attemptData.highestScore}/${quizTotalQuestions}`
+                            : `Highest Score: N/A`;
+
+                        const highestScoreDatetimeLine = attemptData.highestScoreDatetime
+                            ? `Datetime of Highest Score: ${attemptData.highestScoreDatetime}`
+                            : `Datetime of Highest Score: N/A`;
+
                         const continueRetake = confirm(
-                            `You have ${attemptData.totalAttempts} previous attempt(s):\n\n${attemptSummary}\n\nHighest Score: ${attemptData.highestScore}/${attemptData.previousAttempts[0]?.totalQuestions || 'N/A'}\n\nDo you want to retake this quiz?`
+                            `You have ${attemptData.totalAttempts} previous attempt(s):\n\n${attemptSummary}\n\n${highestScoreLine}\n${highestScoreDatetimeLine}\n\nDo you want to retake this quiz?`
                         );
                         
                         if (!continueRetake) {
