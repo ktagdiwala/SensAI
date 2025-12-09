@@ -10,6 +10,16 @@ export default function StudentPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    const formatDateTime = (value: string) => {
+        try {
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return value;
+            return d.toLocaleString();
+        } catch {
+            return value;
+        }
+    };
+
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!quizId.trim() || !quizPassword.trim()) {
@@ -70,19 +80,15 @@ export default function StudentPage() {
 
                         // User has previous attempts - show them before continuing (denominator is quiz total)
                         const attemptSummary = attemptData.previousAttempts
-                            .map((attempt: any) => `${attempt.datetime}: Score ${attempt.score}/${quizTotalQuestions}`)
+                            .map((attempt: any) => `Score: ${attempt.score}/${quizTotalQuestions} (${formatDateTime(attempt.datetime)})`)
                             .join("\n");
                         
                         const highestScoreLine = attemptData.highestScore !== null
-                            ? `Highest Score: ${attemptData.highestScore}/${quizTotalQuestions}`
+                            ? `Highest Score: ${attemptData.highestScore}/${quizTotalQuestions} (${attemptData.highestScoreDatetime ? formatDateTime(attemptData.highestScoreDatetime) : 'N/A'})`
                             : `Highest Score: N/A`;
 
-                        const highestScoreDatetimeLine = attemptData.highestScoreDatetime
-                            ? `Datetime of Highest Score: ${attemptData.highestScoreDatetime}`
-                            : `Datetime of Highest Score: N/A`;
-
                         const continueRetake = confirm(
-                            `You have ${attemptData.totalAttempts} previous attempt(s):\n\n${attemptSummary}\n\n${highestScoreLine}\n${highestScoreDatetimeLine}\n\nDo you want to retake this quiz?`
+                            `You have ${attemptData.totalAttempts} previous attempt(s):\n\n${attemptSummary}\n\n${highestScoreLine}\n\nDo you want to retake this quiz?`
                         );
                         
                         if (!continueRetake) {
