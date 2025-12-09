@@ -541,10 +541,17 @@ export default function QuizPage() {
 
             // Add chat messages
             doc.setFontSize(11);
-            messages.forEach((msg) => {
+            messages.forEach((msg, idx) => {
                 const role = msg.role === "user" ? "Student" : "SensAI";
-                // Remove emojis from message content for PDF display
-                let cleanContent = (msg.content || "").replace(/[\p{Emoji}\p{Emoji_Component}]/gu, '').trim();
+                // Remove only emojis from message content for PDF display (preserve numbers and text)
+                let cleanContent = (msg.content || "")
+                    .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+                    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc Symbols and Pictographs
+                    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport and Map
+                    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // Flags
+                    .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols
+                    .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+                    .trim();
                 
                 // Break up very long words with no spaces (replace runs of 50+ chars with line breaks)
                 cleanContent = cleanContent.replace(/(\S{50})/g, '$1\n');
@@ -553,20 +560,28 @@ export default function QuizPage() {
                 const fullText = prefix + cleanContent;
                 
                 // Split content into lines with proper width calculation
-                const textLines = doc.splitTextToSize(fullText, maxWidth - 5);
+                const textLines = doc.splitTextToSize(fullText, maxWidth);
+                
+                // Filter out empty lines that splitTextToSize might create
+                const nonEmptyLines = textLines.filter((line: string) => line.trim().length > 0);
 
                 // Check if we need a new page
-                if (yPosition + textLines.length * 7 > pageHeight - margin) {
+                if (yPosition + nonEmptyLines.length * 5 > pageHeight - margin) {
                     doc.addPage();
                     yPosition = margin;
                 }
 
                 // Render each line individually to avoid splitTextToSize rendering issues
-                textLines.forEach((line: string) => {
+                nonEmptyLines.forEach((line: string) => {
                     doc.text(line, margin, yPosition);
-                    yPosition += 7;
+                    yPosition += 5;
                 });
-                yPosition += 5; // spacing after message
+                
+                // Reduce spacing between consecutive messages from same sender, keep normal spacing for role changes
+                const nextMsg = messages[idx + 1];
+                const nextRole = nextMsg ? (nextMsg.role === "user" ? "Student" : "SensAI") : null;
+                const spacing = nextRole === role ? 2 : 5;
+                yPosition += spacing;
             });
 
             // Add spacing between questions
