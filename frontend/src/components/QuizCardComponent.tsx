@@ -33,6 +33,7 @@ type QuestionCardProps = {
     selfConfidence?: 0 | 1 | 2 | null;
     onConfidenceChange?: (value: 0 | 1 | 2) => void;
     onResetQuestion?: () => void;
+    onQuestionChecked?: () => void;
     chatResetKey?: number;
 };
 
@@ -54,6 +55,7 @@ export default function QuestionCard({
     selfConfidence = null,
     onConfidenceChange,
     onResetQuestion,
+    onQuestionChecked,
     chatResetKey = 0,
 }: QuestionCardProps) {
     const [selected, setSelected] = useState<string | null>(selectedProp);
@@ -81,6 +83,7 @@ export default function QuestionCard({
         try {
             const res = await validate({ questionId: data.id, choiceId: selected, studentId });
             setFeedback(res);
+            onQuestionChecked?.();
         } finally {
             setSubmitting(false);
         }
