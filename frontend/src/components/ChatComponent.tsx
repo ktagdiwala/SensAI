@@ -228,19 +228,47 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
 
         // Messages
         doc.setFontSize(11);
-        messages.forEach((msg) => {
+        messages.forEach((msg, idx) => {
             const role = msg.role === "user" ? "Student" : "SensAI";
+            // Remove emojis from message content for PDF display 
+            let cleanContent = (msg.content || "")
+                .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+                .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc Symbols and Pictographs
+                .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport and Map
+                .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // Flags
+                .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols
+                .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+                .trim();
+            
+            // Break up very long words with no spaces (replace runs of 50+ chars with line breaks)
+            cleanContent = cleanContent.replace(/(\S{50})/g, '$1\n');
+            
             const prefix = `${role}: `;
-            const lines = doc.splitTextToSize(prefix + msg.content, maxWidth);
+            const fullText = prefix + cleanContent;
+            
+            // Split content into lines with proper width calculation
+            const lines = doc.splitTextToSize(fullText, maxWidth);
+            
+            // Filter out empty lines that splitTextToSize might create
+            const nonEmptyLines = lines.filter((line: string) => line.trim().length > 0);
 
             // Check if we need a new page
-            if (yPosition + lines.length * 7 > pageHeight - margin) {
+            if (yPosition + nonEmptyLines.length * 5 > pageHeight - margin) {
                 doc.addPage();
                 yPosition = margin;
             }
 
-            doc.text(lines, margin, yPosition);
-            yPosition += lines.length * 7 + 5; // line height + spacing
+            // Render each line individually to avoid splitTextToSize rendering issues
+            nonEmptyLines.forEach((line: string) => {
+                doc.text(line, margin, yPosition);
+                yPosition += 5;
+            });
+            
+            // Reduce spacing between consecutive messages from same sender, keep normal spacing for role changes
+            const nextMsg = messages[idx + 1];
+            const nextRole = nextMsg ? (nextMsg.role === "user" ? "Student" : "SensAI") : null;
+            const spacing = nextRole === role ? 2 : 5; // 2 for same sender (3+2=5 total), 5 for role change (3+5=8 total)
+            yPosition += spacing;
         });
 
         // Download
