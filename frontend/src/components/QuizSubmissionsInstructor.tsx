@@ -326,7 +326,7 @@ export default function InstructorAttemptsView() {
                                         {otherFields.map(([key, value]) => (
                                             <div key={key}>
                                                 <dt className="font-medium">{formatFieldLabel(key)}</dt>
-                                                <dd className="break-words text-slate-700">
+                                                <dd className="wrap-break-word text-slate-700">
                                                     {renderFieldValue(key, value)}
                                                 </dd>
                                             </div>
@@ -372,7 +372,7 @@ export default function InstructorAttemptsView() {
                     <div className="mt-3 flex flex-wrap gap-2">
                         <button
                             onClick={() => fetchAttempts(`/student/${studentId}`, `student ${studentId}`)}
-                            className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)]"
+                            className="rounded-md bg-canvas-light-blue px-4 py-2 text-sm font-semibold text-white hover:bg-canvas-dark-blue"
                         >
                             View All Attempts
                         </button>
@@ -408,7 +408,7 @@ export default function InstructorAttemptsView() {
                     <div className="mt-3">
                         <button
                             onClick={() => fetchAttempts(`/quiz/${quizId}`, `quiz ${quizId}`)}
-                            className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)]"
+                            className="rounded-md bg-canvas-light-blue px-4 py-2 text-sm font-semibold text-white hover:bg-canvas-dark-blue"
                         >
                             View Quiz Attempts
                         </button>
@@ -446,7 +446,7 @@ export default function InstructorAttemptsView() {
                         <div className="mt-3">
                             <button
                                 onClick={() => fetchAttempts(`/question/${questionId}`, `question ${questionId}`)}
-                                className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)]"
+                                className="rounded-md bg-canvas-light-blue px-4 py-2 text-sm font-semibold text-white hover:bg-canvas-dark-blue"
                             >
                                 View Question Attempts
                             </button>
@@ -470,7 +470,7 @@ export default function InstructorAttemptsView() {
                                 />
                             </label>
                         </div>
-                        <button className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)]" type="submit">
+                        <button className="rounded-md bg-canvas-light-blue px-4 py-2 text-sm font-semibold text-white hover:bg-canvas-dark-blue" type="submit">
                             Fetch Student & Question Attempts
                         </button>
                     </form>
@@ -501,7 +501,7 @@ export default function InstructorAttemptsView() {
                             </label>
                         </div>
                         <button
-                            className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)] disabled:cursor-not-allowed disabled:bg-[var(--color-canvas-gray)]"
+                            className="rounded-md bg-canvas-light-blue px-4 py-2 text-sm font-semibold text-white hover:bg-canvas-dark-blue disabled:cursor-not-allowed disabled:bg-canvas-gray"
                             type="submit"
                             disabled={!studentQuizId}
                         >

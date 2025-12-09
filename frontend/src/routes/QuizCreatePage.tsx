@@ -5,7 +5,6 @@ import QuizQuestionInstructor from "../components/QuizQuestionComponentInstructo
 import SearchIcon from "../assets/Search.svg";
 import { useQuizQuestions } from "../hooks/useQuizQuestions";
 
-
 // ========================================
 // UI CONFIG: Tabs and option interfaces
 // ========================================
@@ -17,6 +16,15 @@ const tabs = [
 interface CourseOption {
   id: number;
   title: string;
+}
+
+interface CourseQuestionPreview {
+  questionId: number;
+  title: string;
+  correctAns: string;
+  otherAns: string;
+  prompt: string | null;
+  courseId: number;
 }
 
 const COURSE_LIST_ENDPOINT = "http://localhost:3000/api/quiz/courses";
@@ -68,6 +76,14 @@ export default function QuizCreatePage() {
   const [isCoursesLoading, setCoursesLoading] = useState(false);
   const [courseListError, setCourseListError] = useState<string | null>(null);
   const [courseSearchTerm, setCourseSearchTerm] = useState("");
+  const [courseQuestionResults, setCourseQuestionResults] = useState<CourseQuestionPreview[]>([]);
+  const [isCourseQuestionsLoading, setCourseQuestionsLoading] = useState(false);
+  const [courseQuestionsError, setCourseQuestionsError] = useState<string | null>(null);
+
+  const selectedCourseTitle = useMemo(() => {
+    const selected = courses.find((course) => String(course.id) === courseId);
+    return selected ? selected.title : "";
+  }, [courses, courseId]);
 
   // ========================================
   // EFFECT: Lock/unlock body scroll when question modal is open
@@ -217,6 +233,49 @@ export default function QuizCreatePage() {
       isActive = false;
     };
   }, []);
+
+  // ========================================
+  // HANDLER: Find questions for the selected course
+  // ========================================
+  async function handleFindQuestions() {
+    if (!courseId) {
+      console.warn("[QuizCreatePage] Select a course before fetching its questions.");
+      return;
+    }
+
+    setCourseQuestionsLoading(true);
+    setCourseQuestionsError(null);
+
+    try {
+      const endpoint = `http://localhost:3000/api/question/course/${courseId}`;
+      const response = await fetch(endpoint, { credentials: "include" });
+      if (!response.ok) {
+        throw new Error(`Fetch failed with status ${response.status}`);
+      }
+      const payload = await response.json();
+      const normalized: CourseQuestionPreview[] = Array.isArray(payload?.questions)
+        ? payload.questions.map((question: Partial<CourseQuestionPreview>) => ({
+            questionId: Number(question.questionId),
+            title: question.title ?? "Untitled Question",
+            correctAns: question.correctAns ?? "",
+            otherAns: question.otherAns ?? "",
+            prompt:
+              question.prompt === null || question.prompt === undefined || question.prompt === "null"
+                ? null
+                : String(question.prompt),
+            courseId: Number(question.courseId ?? courseId),
+          }))
+        : [];
+      setCourseQuestionResults(normalized);
+      console.log("[QuizCreatePage] Course question response:", normalized);
+    } catch (error) {
+      console.error("[QuizCreatePage] Unable to fetch course questions.", error);
+      setCourseQuestionResults([]);
+      setCourseQuestionsError("Unable to load course questions for this course.");
+    } finally {
+      setCourseQuestionsLoading(false);
+    }
+  }
 
   // ========================================
   // RENDER: Page layout and content
@@ -389,7 +448,7 @@ export default function QuizCreatePage() {
             )}
 
             {/* Actions: New question & Find questions (future) */}
-            <div className="flex justify-center gap-4 pt-2">
+            <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
               <button
                 type="button"
                 onClick={openNewQuestionModal}
@@ -398,14 +457,88 @@ export default function QuizCreatePage() {
                 <span className="text-base">＋</span>
                 New Question
               </button>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-              >
-                <img src={SearchIcon} alt="Find questions" className="h-4 w-4" />
-                Find Questions
-              </button>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={handleFindQuestions}
+                  disabled={!courseId}
+                >
+                  <img src={SearchIcon} alt="Find question" className="h-4 w-4" />
+                  Find Question
+                </button>
+              </div>
             </div>
+
+            {(isCourseQuestionsLoading ||
+              courseQuestionsError ||
+              courseQuestionResults.length > 0) && (
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-gray-800">
+                    {selectedCourseTitle
+                      ? `List of questions for course: ${selectedCourseTitle}`
+                      : "List of questions for course"}
+                  </h3>
+                  {courseId && (
+                    <span className="text-xs text-gray-500">Course ID #{courseId}</span>
+                  )}
+                </div>
+                {isCourseQuestionsLoading && (
+                  <p className="mt-3 text-xs text-gray-500">Loading questions…</p>
+                )}
+                {courseQuestionsError && (
+                  <p className="mt-3 text-xs text-red-600">{courseQuestionsError}</p>
+                )}
+                {!isCourseQuestionsLoading &&
+                  !courseQuestionsError &&
+                  courseQuestionResults.length === 0 && (
+                    <p className="mt-3 text-xs text-gray-500">
+                      No questions returned for the selected course yet.
+                    </p>
+                  )}
+                {!isCourseQuestionsLoading &&
+                  !courseQuestionsError &&
+                  courseQuestionResults.length > 0 && (
+                    <ul className="mt-3 space-y-3">
+                      {courseQuestionResults.map((question, index) => {
+                        const distractors =
+                          typeof question.otherAns === "string"
+                            ? question.otherAns
+                                .split("{|}")
+                                .map((choice) => choice.trim())
+                                .filter(Boolean)
+                            : [];
+                        return (
+                          <li
+                            key={`${question.questionId}-${index}`}
+                            className="rounded-md border border-white bg-white p-3 text-sm text-gray-800 shadow-sm"
+                          >
+                            <div className="flex items-center justify-between text-xs text-gray-500">
+                              <span>Question {index + 1}</span>
+                              {question.questionId && <span>ID: {question.questionId}</span>}
+                            </div>
+                            <p className="mt-1 font-semibold text-gray-900">{question.title}</p>
+                            {question.prompt && (
+                              <p className="mt-1 text-xs italic text-gray-600">
+                                Prompt: {question.prompt}
+                              </p>
+                            )}
+                            <p className="mt-2 text-xs text-green-700">
+                              Correct answer: {question.correctAns || "—"}
+                            </p>
+                            {distractors.length > 0 && (
+                              <p className="text-xs text-gray-600">
+                                Other answers: {distractors.join(", ")}
+                              </p>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+              </div>
+            )}
           </div>
         )}
       </main>
