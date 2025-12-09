@@ -395,7 +395,7 @@ export default function QuizCreatePage() {
               </>
             )}
 
-            {/* FIND QUESTIONS */}
+            {/* New Question & Find Question buttons */}
             <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
               <button
                 type="button"
