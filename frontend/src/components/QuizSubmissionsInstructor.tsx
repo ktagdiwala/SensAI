@@ -478,17 +478,33 @@ export default function InstructorAttemptsView() {
                     <form className="space-y-3" onSubmit={submitHandler(() => fetchAttempts(`/student/${studentId}/quiz/${studentQuizId}`, `student ${studentId} & quiz ${studentQuizId}`))}>
                         <div className="grid gap-3 sm:grid-cols-1">
                             <label className="flex flex-col gap-1 text-sm font-medium text-slate-700">
-                                Quiz ID
-                                <input
-                                    required
-                                    type="number"
-                                    value={studentQuizId}
-                                    onChange={(e) => setStudentQuizId(e.target.value)}
-                                    className="rounded-md border border-slate-300 px-3 py-2 text-sm"
-                                />
+                                Quiz
+                                {quizzesLoading ? (
+                                    <p className="text-sm text-slate-500">Loading quizzes...</p>
+                                ) : quizzesError ? (
+                                    <p className="text-sm text-red-600">{quizzesError}</p>
+                                ) : (
+                                    <select
+                                        required
+                                        value={studentQuizId}
+                                        onChange={(e) => setStudentQuizId(e.target.value)}
+                                        className="rounded-md border border-slate-300 px-3 py-2 text-sm"
+                                    >
+                                        <option value="">-- Select a Quiz --</option>
+                                        {quizzes.map((quiz) => (
+                                            <option key={quiz.quizId} value={quiz.quizId}>
+                                                {quiz.quizTitle}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                             </label>
                         </div>
-                        <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
+                        <button
+                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                            type="submit"
+                            disabled={!studentQuizId}
+                        >
                             Fetch Student & Quiz Attempts
                         </button>
                     </form>
