@@ -654,7 +654,7 @@ export default function QuizPage() {
             </button>
 
             <button
-                className="bg-blue-500 text-white m-8 p-2 rounded-md hover:bg-blue-600"
+                className="bg-gray-200 text-gray-800 m-8 p-2 rounded-md"
                 onClick={downloadAllChats}
             >
                 Download All Chats
