@@ -52,6 +52,39 @@ export default function StudentPage() {
                 throw new Error("Quiz data is missing from response.");
             }
 
+            // Check for previous attempts on this quiz
+            try {
+                const previousAttemptsRes = await fetch(
+                    `http://localhost:3000/api/attempt/student/quiz/${encodeURIComponent(trimmedQuizId)}/previous-attempts`,
+                    {
+                        method: "GET",
+                        credentials: "include",
+                    }
+                );
+                
+                if (previousAttemptsRes.ok) {
+                    const attemptData = await previousAttemptsRes.json();
+                    if (attemptData.totalAttempts > 0) {
+                        // User has previous attempts - show them before continuing
+                        const attemptSummary = attemptData.previousAttempts
+                            .map((attempt: any) => `${attempt.datetime}: Score ${attempt.score}/${attempt.totalQuestions}`)
+                            .join("\n");
+                        
+                        const continueRetake = confirm(
+                            `You have ${attemptData.totalAttempts} previous attempt(s):\n\n${attemptSummary}\n\nHighest Score: ${attemptData.highestScore}/${attemptData.previousAttempts[0]?.totalQuestions || 'N/A'}\n\nDo you want to retake this quiz?`
+                        );
+                        
+                        if (!continueRetake) {
+                            setError("Quiz retake cancelled.");
+                            return;
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Error checking previous attempts:", err);
+                // Continue with navigation even if previous attempts check fails
+            }
+
             navigate(
                 `/quiz/${encodeURIComponent(trimmedQuizId)}/${encodeURIComponent(trimmedPassword)}`
             );
