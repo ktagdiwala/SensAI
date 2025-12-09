@@ -346,6 +346,79 @@ async function getStudentQuestionAttemptsForQuiz(userId, quizId, dateTime){
 	}
 }
 
+/** getPreviousQuizAttempts
+ * Retrieves all previous attempts for a student on a specific quiz
+ * Returns: number of attempts, highest score, and datetime of highest score
+ * @param {int} userId
+ * @param {int} quizId
+ */
+async function getPreviousQuizAttempts(userId, quizId){
+	try{
+		// Get all unique attempt datetimes for this student-quiz pair
+		const attemptsQuery = `
+			SELECT DISTINCT dateTime 
+			FROM question_attempt 
+			WHERE userId = ? AND quizId = ? 
+			ORDER BY dateTime DESC
+		`;
+		const [attempts] = await pool.query(attemptsQuery, [userId, quizId]);
+		
+		if(attempts.length === 0){
+			return {
+				totalAttempts: 0,
+				previousAttempts: [],
+				highestScore: null,
+				highestScoreDatetime: null
+			};
+		}
+
+		// For each attempt datetime, calculate the score
+		const attemptDetails = [];
+		let maxScore = -1;
+		let maxScoreDatetime = null;
+
+		for(const attempt of attempts){
+			const scoreQuery = `
+				SELECT COUNT(*) as totalQuestions, 
+					   SUM(CASE WHEN isCorrect = 1 THEN 1 ELSE 0 END) as score
+				FROM question_attempt
+				WHERE userId = ? AND quizId = ? AND dateTime = ?
+			`;
+			const [scoreResults] = await pool.query(scoreQuery, [userId, quizId, attempt.dateTime]);
+			
+			if(scoreResults.length > 0){
+				const { totalQuestions, score } = scoreResults[0];
+				attemptDetails.push({
+					datetime: attempt.dateTime,
+					score: score || 0,
+					totalQuestions: totalQuestions || 0
+				});
+
+				// Track highest score
+				if((score || 0) > maxScore){
+					maxScore = score || 0;
+					maxScoreDatetime = attempt.dateTime;
+				}
+			}
+		}
+
+		return {
+			totalAttempts: attempts.length,
+			previousAttempts: attemptDetails,
+			highestScore: maxScore >= 0 ? maxScore : null,
+			highestScoreDatetime: maxScoreDatetime
+		};
+	}catch(error){
+		console.error("Error retrieving previous quiz attempts: ", error);
+		return {
+			totalAttempts: 0,
+			previousAttempts: [],
+			highestScore: null,
+			highestScoreDatetime: null
+		};
+	}
+}
+
 module.exports = {
 	getStudents,
 	checkAnswer,
@@ -357,5 +430,6 @@ module.exports = {
 	getAttemptsByStudentAndQuestion,
 	getAttemptsByStudentAndQuiz,
 	getStudentQuizAttempts,
-	getStudentQuestionAttemptsForQuiz
+	getStudentQuestionAttemptsForQuiz,
+	getPreviousQuizAttempts
 }
