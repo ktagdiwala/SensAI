@@ -284,27 +284,25 @@ export default function InstructorAttemptsView() {
                                 <p className="text-sm font-semibold text-slate-700">
                                     Attempted: {attempt.dateTime ? new Date(attempt.dateTime).toLocaleString() : '—'}
                                 </p>
-                                <p className="text-sm text-slate-500">{attempt.userName || `User ${attempt.userId}`}</p>
+                                <p className="text-sm text-slate-500">{attempt.userName + ` (ID: ${attempt.userId})`}</p>
                             </div>
 
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
                                 <div className="rounded-md border border-slate-100 p-3">
-                                    <p className="text-xs uppercase tracking-wide text-slate-500">Quiz</p>
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Quiz Id: {attempt.quizId ?? '—'} </p>
+                                  
                                     <p className="text-sm font-semibold text-slate-800">
-                                        {quizTitle || `Quiz ID: ${attempt.quizId ?? '—'}`}
+                                        {`Quiz Title: ${quizTitle}`}
                                     </p>
-                                    {quizTitle && (
-                                        <p className="text-sm text-slate-600">ID: {attempt.quizId ?? '—'}</p>
-                                    )}
+                                    
+
                                 </div>
                                 <div className="rounded-md border border-slate-100 p-3">
-                                    <p className="text-xs uppercase tracking-wide text-slate-500">Question</p>
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Question Id: {attempt.questionId} </p>
                                     <p className="text-sm font-semibold text-slate-800">
                                         {questionTitle || `Question ID: ${attempt.questionId ?? '—'}`}
                                     </p>
-                                    {questionTitle && (
-                                        <p className="text-sm text-slate-600">ID: {attempt.questionId ?? '—'}</p>
-                                    )}
+                            
                                 </div>
                             </div>
 
