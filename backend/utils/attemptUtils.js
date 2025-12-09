@@ -28,6 +28,25 @@ async function getStudents(){
 	}
 }
 
+/** getLatestQuestionAttempt
+ * Retrieves the most recent attempt for a student-question pair within a specific quiz
+ * @param {int} userId
+ * @param {int} questionId
+ * @param {int} quizId
+ */
+async function getLatestQuestionAttempt(userId, questionId, quizId){
+	const sql = `SELECT dateTime FROM question_attempt 
+		WHERE userId = ? AND questionId = ? AND quizId = ? 
+		ORDER BY dateTime DESC LIMIT 1`;
+	try{
+		const [rows] = await pool.query(sql, [userId, questionId, quizId]);
+		return rows.length > 0 ? rows[0] : null;
+	}catch(error){
+		console.error("Error retrieving latest attempt: ", error);
+		return null;
+	}
+}
+
 /** checkAnswer
  * @param {int} questionId
  * @param {string} givenAns
@@ -60,38 +79,73 @@ async function checkAnswer(questionId, givenAns){
  * @param {int} userId
  * @param {int} questionId
  * @param {int} quizId
- * @param {string} givenAns
+ * @param {string} givenAns - can be empty string for unanswered questions
  * @param {string} chatHistory
  * @param {int} numMsgs
  * @param {int} selfConfidence
+ * @param {string} dateTime - optional, uses current time if not provided
+ * @param {boolean} hasCheckedAnswer - if true and question was answered, updates most recent attempt's dateTime instead of creating new
  */
-async function recordQuestionAttempt(userId, questionId, quizId, givenAns, chatHistory="", numMsgs=0, selfConfidence=null){
-	const sql = `INSERT INTO question_attempt 
-		(userId, questionId, quizId, dateTime, isCorrect, givenAns, numMsgs, selfConfidence, mistakeId) 
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-	const isCorrect = await checkAnswer(questionId, givenAns);
-	var mistakeId = null;
-	if(isCorrect === null){
-		console.error("Could not determine if answer is correct");
-		return null;
-	}else if(isCorrect === 0){
-		// Determine mistakeId for incorrect answers
+async function recordQuestionAttempt(userId, questionId, quizId, givenAns=null, chatHistory="", numMsgs=0, selfConfidence=null, dateTime=null, hasCheckedAnswer=false){
+	// Treat empty answers as unanswered (isCorrect = 0)
+	if(givenAns.trim() === "" || givenAns === undefined){
+		givenAns = null;
+	}
+	const isAnswered = givenAns !== null;
+	let isCorrect = 0;
+	let mistakeId = null;
+	
+	if(isAnswered){
+		isCorrect = await checkAnswer(questionId, givenAns);
+		if(isCorrect === null){
+			console.error("Could not determine if answer is correct");
+			return null;
+		}else if(isCorrect === 0){
+			// Determine mistakeId for incorrect answers
+			try{
+				// Lazy import to avoid circular dependency
+				const { getMistake } = require('./geminiUtils');
+				mistakeId = await getMistake(questionId, givenAns, selfConfidence, chatHistory, userId);
+			}catch (error){
+				console.error("Error determining mistake ID: ", error);
+			}
+		}
+	}else{
+		// set the mistakeId to a default value for unanswered questions
+		let sql = `SELECT mistakeId FROM mistake_type WHERE label LIKE '%unanswered%' OR label LIKE '%No Attempt%'`;
 		try{
-			// Lazy import to avoid circular dependency
-			const { getMistake } = require('./geminiUtils');
-			mistakeId = await getMistake(questionId, givenAns, selfConfidence, chatHistory, userId);
-		}catch (error){
-			console.error("Error determining mistake ID: ", error);
+			const [rows] = await pool.query(sql);
+			if(rows.length > 0){
+				mistakeId = rows[0].mistakeId;
+			}
+		}catch(error){
+			console.error("Error retrieving default mistake ID for unanswered questions: ", error);
 		}
 	}
-	// Use now for dateTime
-	const dateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
-	if(!userId || !questionId || !quizId || isCorrect === null){
+	// Use now for dateTime if not provided
+	if(dateTime === null){
+		dateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+	}
+	if(!userId || !questionId || !quizId){
 		console.error("Invalid parameters for recording question attempt.");
 		return null;
 	}
 	try{
-		const [result] = await pool.query(sql, [userId, questionId, quizId, dateTime, isCorrect, givenAns, numMsgs, selfConfidence, mistakeId]);
+		// If hasCheckedAnswer is true and givenAns is non-empty, try to update the most recent attempt
+		if(hasCheckedAnswer && isAnswered){
+			const existingAttempt = await getLatestQuestionAttempt(userId, questionId, quizId);
+			if(existingAttempt){
+				const updateSql = `UPDATE question_attempt SET dateTime = ? WHERE dateTime = ? AND userId = ? AND questionId = ? AND quizId = ?`;
+				await pool.query(updateSql, [dateTime, existingAttempt.dateTime, userId, questionId, quizId]);
+				// console.log(`Updated existing attempt - userId: ${userId}, questionId: ${questionId}, attemptId: ${existingAttempt.attemptId}`);
+				return { isCorrect, mistakeId };
+			}
+		}
+		// Otherwise, create a new attempt record
+		const insertSql = `INSERT INTO question_attempt 
+			(userId, questionId, quizId, dateTime, isCorrect, givenAns, numMsgs, selfConfidence, mistakeId) 
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+		const [result] = await pool.query(insertSql, [userId, questionId, quizId, dateTime, isCorrect, givenAns, numMsgs, selfConfidence, mistakeId]);
 		// console.log(`Successfully recorded question attempt - userId: ${userId}, questionId: ${questionId}, isCorrect: ${isCorrect}, mistakeId: ${mistakeId}`);
 		return { isCorrect, mistakeId };
 	}catch(error){
@@ -102,6 +156,8 @@ async function recordQuestionAttempt(userId, questionId, quizId, givenAns, chatH
 
 /** recordQuizAttempt
  * Calls the recordQuestionAttempt for each question in the questionArray
+ * If a question has hasCheckedAnswer=true and a non-empty givenAns, updates the most recent attempt's dateTime
+ * Otherwise, creates a new attempt record
  * @param {*} userId 
  * @param {*} quizId 
  * @param {*} questionArray 
@@ -109,9 +165,11 @@ async function recordQuestionAttempt(userId, questionId, quizId, givenAns, chatH
 async function recordQuizAttempt(userId, quizId, questionArray){
 	let score = 0;
 	let questionFeedback = [];
+	// set dateTime as now (constant for all questions in this attempt) to account for lag in async processing
+	const dateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
 	for(const question of questionArray){
-		const { questionId, givenAns, numMsgs=0, chatHistory="", selfConfidence=null } = question;
-		const { isCorrect, mistakeId } = await recordQuestionAttempt(userId, questionId, quizId, givenAns, chatHistory, numMsgs, selfConfidence);
+		const { questionId, givenAns, numMsgs=0, chatHistory="", selfConfidence=null, hasCheckedAnswer=false } = question;
+		const { isCorrect, mistakeId } = await recordQuestionAttempt(userId, questionId, quizId, givenAns, chatHistory, numMsgs, selfConfidence, dateTime, hasCheckedAnswer);
 		questionFeedback.push({ questionId, givenAns, isCorrect, mistakeId });
 		score += isCorrect;
 	}
@@ -138,7 +196,8 @@ async function getAttemptsByQuestion(questionId){
 		JOIN quiz ON question_attempt.quizId = quiz.quizId 
 		JOIN question ON question_attempt.questionId = question.questionId
 		LEFT JOIN mistake_type ON question_attempt.mistakeId = mistake_type.mistakeId
-		WHERE question.questionId = ?`;
+		WHERE question.questionId = ?
+		ORDER BY dateTime DESC`;
 	try{
 		const [rows] = await pool.query(sql, [questionId]);
 		return rows;
@@ -160,7 +219,8 @@ async function getAttemptsByQuiz(quizId){
 		JOIN quiz ON question_attempt.quizId = quiz.quizId 
 		JOIN question ON question_attempt.questionId = question.questionId
 		LEFT JOIN mistake_type ON question_attempt.mistakeId = mistake_type.mistakeId
-		WHERE quiz.quizId = ?`;
+		WHERE quiz.quizId = ?
+		ORDER BY dateTime DESC`;
 	try{
 		const [rows] = await pool.query(sql, [quizId]);
 		return rows;
@@ -182,7 +242,8 @@ async function getAttemptsByStudent(userId){
 		JOIN quiz ON question_attempt.quizId = quiz.quizId 
 		JOIN question ON question_attempt.questionId = question.questionId
 		LEFT JOIN mistake_type ON question_attempt.mistakeId = mistake_type.mistakeId
-		WHERE userId = ?`;
+		WHERE userId = ?
+		ORDER BY dateTime DESC`;
 	try{
 		const [rows] = await pool.query(sql, [userId]);
 		return rows;
@@ -204,7 +265,8 @@ async function getAttemptsByStudentAndQuestion(userId, questionId){
 		JOIN quiz ON question_attempt.quizId = quiz.quizId 
 		JOIN question ON question_attempt.questionId = question.questionId
 		LEFT JOIN mistake_type ON question_attempt.mistakeId = mistake_type.mistakeId
-		WHERE userId = ? AND question.questionId = ?`;
+		WHERE userId = ? AND question.questionId = ?
+		ORDER BY dateTime DESC`;
 	try{
 		const [rows] = await pool.query(sql, [userId, questionId]);
 		return rows;
@@ -226,7 +288,8 @@ async function getAttemptsByStudentAndQuiz(userId, quizId){
 		JOIN quiz ON question_attempt.quizId = quiz.quizId 
 		JOIN question ON question_attempt.questionId = question.questionId 
 		LEFT JOIN mistake_type ON question_attempt.mistakeId = mistake_type.mistakeId
-		WHERE userId = ? AND quiz.quizId = ?`;
+		WHERE userId = ? AND quiz.quizId = ?
+		ORDER BY dateTime DESC`;
 	try{
 		const [rows] = await pool.query(sql, [userId, quizId]);
 		return rows;
@@ -247,7 +310,8 @@ async function getStudentQuizAttempts(userId){
 		JOIN quiz ON question_attempt.quizId = quiz.quizId
 		JOIN question ON question_attempt.questionId = question.questionId
 		WHERE userId = ? GROUP BY quiz.quizId, dateTime 
-		HAVING questionCount >= 2`;
+		HAVING questionCount >= 2
+		ORDER BY dateTime DESC`;
 	try{
 		const [rows] = await pool.query(sql, [userId]);
 		return rows;
@@ -271,7 +335,8 @@ async function getStudentQuestionAttemptsForQuiz(userId, quizId, dateTime){
 		JOIN quiz ON question_attempt.quizId = quiz.quizId
 		JOIN question ON question_attempt.questionId = question.questionId
 		LEFT JOIN mistake_type ON question_attempt.mistakeId = mistake_type.mistakeId
-		WHERE userId = ? AND quiz.quizId = ? AND dateTime = ?`;
+		WHERE userId = ? AND quiz.quizId = ? AND dateTime = ?
+		ORDER BY question.questionId`;
 	try{
 		const [rows] = await pool.query(sql, [userId, quizId, dateTime]);
 		return rows;
