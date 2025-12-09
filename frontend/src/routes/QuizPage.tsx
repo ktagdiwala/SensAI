@@ -102,9 +102,22 @@ export default function QuizPage() {
     const saveAllChats = async (useBeacon: boolean = false) => {
         try {
             if (!quizId) return;
+            
+            // Helper function to remove emojis from text
+            const removeEmojis = (text: string) => {
+                return text.replace(/[\p{Emoji}\p{Emoji_Component}]/gu, '').trim();
+            };
+            
             const chats = Object.entries(chatMap)
                 .filter(([_, chat]) => chat && chat.length > 0)
-                .map(([questionId, chat]) => ({ quizId, questionId, chat }));
+                .map(([questionId, chat]) => ({
+                    quizId,
+                    questionId,
+                    chat: chat.map((msg: any) => ({
+                        ...msg,
+                        content: removeEmojis(msg.content || '')
+                    }))
+                }));
             if (chats.length === 0) return;
             const url = `${API_BASE_URL}/chat/save-batch`;
             const payload = JSON.stringify({ chats });
@@ -478,6 +491,9 @@ export default function QuizPage() {
         const maxWidth = pageWidth - 2 * margin;
         let yPosition = margin;
 
+        // Set default font
+        doc.setFont("helvetica");
+
         // Title
         doc.setFontSize(16);
         doc.text("SensAI Chat History - All Questions", margin, yPosition);
@@ -527,17 +543,30 @@ export default function QuizPage() {
             doc.setFontSize(11);
             messages.forEach((msg) => {
                 const role = msg.role === "user" ? "Student" : "SensAI";
+                // Remove emojis from message content for PDF display
+                let cleanContent = (msg.content || "").replace(/[\p{Emoji}\p{Emoji_Component}]/gu, '').trim();
+                
+                // Break up very long words with no spaces (replace runs of 50+ chars with line breaks)
+                cleanContent = cleanContent.replace(/(\S{50})/g, '$1\n');
+                
                 const prefix = `${role}: `;
-                const lines = doc.splitTextToSize(prefix + msg.content, maxWidth);
+                const fullText = prefix + cleanContent;
+                
+                // Split content into lines with proper width calculation
+                const textLines = doc.splitTextToSize(fullText, maxWidth - 5);
 
                 // Check if we need a new page
-                if (yPosition + lines.length * 7 > pageHeight - margin) {
+                if (yPosition + textLines.length * 7 > pageHeight - margin) {
                     doc.addPage();
                     yPosition = margin;
                 }
 
-                doc.text(lines, margin, yPosition);
-                yPosition += lines.length * 7 + 5; // line height + spacing
+                // Render each line individually to avoid splitTextToSize rendering issues
+                textLines.forEach((line: string) => {
+                    doc.text(line, margin, yPosition);
+                    yPosition += 7;
+                });
+                yPosition += 5; // spacing after message
             });
 
             // Add spacing between questions
