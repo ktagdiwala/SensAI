@@ -372,7 +372,7 @@ export default function InstructorAttemptsView() {
                     <div className="mt-3 flex flex-wrap gap-2">
                         <button
                             onClick={() => fetchAttempts(`/student/${studentId}`, `student ${studentId}`)}
-                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                            className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)]"
                         >
                             View All Attempts
                         </button>
@@ -408,7 +408,7 @@ export default function InstructorAttemptsView() {
                     <div className="mt-3">
                         <button
                             onClick={() => fetchAttempts(`/quiz/${quizId}`, `quiz ${quizId}`)}
-                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                            className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)]"
                         >
                             View Quiz Attempts
                         </button>
@@ -446,7 +446,7 @@ export default function InstructorAttemptsView() {
                         <div className="mt-3">
                             <button
                                 onClick={() => fetchAttempts(`/question/${questionId}`, `question ${questionId}`)}
-                                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                                className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)]"
                             >
                                 View Question Attempts
                             </button>
@@ -470,7 +470,7 @@ export default function InstructorAttemptsView() {
                                 />
                             </label>
                         </div>
-                        <button className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
+                        <button className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)]" type="submit">
                             Fetch Student & Question Attempts
                         </button>
                     </form>
@@ -501,7 +501,7 @@ export default function InstructorAttemptsView() {
                             </label>
                         </div>
                         <button
-                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+                            className="rounded-md bg-[var(--color-canvas-light-blue)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--color-canvas-dark-blue)] disabled:cursor-not-allowed disabled:bg-[var(--color-canvas-gray)]"
                             type="submit"
                             disabled={!studentQuizId}
                         >
