@@ -26,6 +26,7 @@ export default function Nav() {
       {user?.role === 'Instructor' && (
         <>
           <NavLink to="/instructors" className={linkClass}>Instructors</NavLink>
+          <NavLink to="/instructor/analytics" className={linkClass}>Analytics</NavLink>
           <NavLink to="/quiz-create" className={linkClass}>Create Quiz</NavLink>
         </>
       )}
