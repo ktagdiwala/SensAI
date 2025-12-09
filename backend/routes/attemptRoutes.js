@@ -315,7 +315,8 @@ router.get('/student/quiz/:quizId/previous-attempts', verifySessionStudent, asyn
 			totalAttempts: attemptHistory.totalAttempts,
 			previousAttempts: attemptHistory.previousAttempts,
 			highestScore: attemptHistory.highestScore,
-			highestScoreDatetime: attemptHistory.highestScoreDatetime
+			highestScoreDatetime: attemptHistory.highestScoreDatetime,
+			totalQuestions: attemptHistory.totalQuestions
 		});
 	}catch(error){
 		console.error('Error retrieving previous quiz attempts:', error);
