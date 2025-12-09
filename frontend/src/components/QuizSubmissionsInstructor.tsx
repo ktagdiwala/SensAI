@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { FormEvent } from 'react';
 
 type Attempt = {
@@ -59,6 +59,8 @@ export default function InstructorAttemptsView() {
     const [questions, setQuestions] = useState<Question[]>([]);
     const [questionsLoading, setQuestionsLoading] = useState(false);
     const [questionsError, setQuestionsError] = useState('');
+    const [sortField, setSortField] = useState<'dateTime' | 'quizTitle' | 'questionTitle' | 'userName' | 'isCorrect'>('dateTime');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     // Form state
     const [quizId, setQuizId] = useState('');
@@ -225,11 +227,35 @@ export default function InstructorAttemptsView() {
         return String(value ?? '-');
     };
 
+    const sortedAttempts = useMemo(() => {
+        if (!attempts) return null;
+        const normalize = (value: unknown): string | number => {
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'number') return value;
+            if (typeof value === 'boolean') return value ? 1 : 0;
+            return String(value).toLowerCase();
+        };
+        const valueGetter: Record<typeof sortField, (attempt: Attempt) => number | string> = {
+            dateTime: (a) => new Date(a.dateTime ?? 0).getTime(),
+            quizTitle: (a) => normalize(a.quizTitle),
+            questionTitle: (a) => normalize(a.questionTitle),
+            userName: (a) => normalize(a.userName),
+            isCorrect: (a) => (a.isCorrect === true || a.isCorrect === 1 ? 1 : 0),
+        };
+        return [...attempts].sort((a, b) => {
+            const valA = valueGetter[sortField](a);
+            const valB = valueGetter[sortField](b);
+            if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+            if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [attempts, sortField, sortOrder]);
+
     const renderAttempts = () => {
         if (loading) return <p className="text-sm text-slate-500">Loading…</p>;
         if (error) return <p className="text-sm text-red-600">{error}</p>;
-        if (!attempts) return null;
-        if (attempts.length === 0) return <p className="text-sm text-slate-500">No attempts found for {context}.</p>;
+        if (!sortedAttempts) return null;
+        if (sortedAttempts.length === 0) return <p className="text-sm text-slate-500">No attempts found for {context}.</p>;
 
         const reservedKeys = new Set([
             'dateTime',
@@ -245,7 +271,7 @@ export default function InstructorAttemptsView() {
 
         return (
             <ul className="space-y-4">
-                {attempts.map((attempt, idx) => {
+                {sortedAttempts.map((attempt, idx) => {
                     const quizTitle = typeof attempt.quizTitle === 'string' ? attempt.quizTitle.trim() : '';
                     const questionTitle = typeof attempt.questionTitle === 'string' ? attempt.questionTitle.trim() : '';
                     const isCorrect = attempt.isCorrect === true || attempt.isCorrect === 1;
@@ -350,15 +376,7 @@ export default function InstructorAttemptsView() {
                         >
                             View All Attempts
                         </button>
-                        <button
-                            onClick={() => {
-                                setStudentQuizId('');
-                                setStudentQuestionId('');
-                            }}
-                            className="rounded-md bg-slate-400 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-500"
-                        >
-                            Clear Quiz/Question
-                        </button>
+
                     </div>
                 )}
             </div>
@@ -479,6 +497,35 @@ export default function InstructorAttemptsView() {
 
             <div className="space-y-2">
                 <p className="text-sm font-semibold text-slate-700">Results</p>
+                {attempts && attempts.length > 0 && (
+                    <div className="flex flex-wrap gap-3 text-sm text-slate-700">
+                        <label className="flex flex-col gap-1">
+                            Sort by
+                            <select
+                                value={sortField}
+                                onChange={(e) => setSortField(e.target.value as typeof sortField)}
+                                className="rounded-md border border-slate-300 px-3 py-2"
+                            >
+                                <option value="dateTime">Date</option>
+                                <option value="quizTitle">Quiz Title</option>
+                                <option value="questionTitle">Question Title</option>
+                                <option value="userName">Student Name</option>
+                                <option value="isCorrect">Correctness</option>
+                            </select>
+                        </label>
+                        <label className="flex flex-col gap-1">
+                            Order
+                            <select
+                                value={sortOrder}
+                                onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+                                className="rounded-md border border-slate-300 px-3 py-2"
+                            >
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </label>
+                    </div>
+                )}
                 {renderAttempts()}
             </div>
         </div>
