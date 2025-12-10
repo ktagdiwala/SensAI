@@ -73,7 +73,7 @@ export default function InstructorPage() {
             <header className="flex justify-center">
                 <Link
                     to="/quiz-create"
-                    className="inline-flex items-center justify-center rounded-md bg bg-canvas-light-blue px-8 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-(--color-blue-600,#01539a) focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
+                    className="inline-flex items-center justify-center rounded-md bg bg-canvas-light-blue px-8 py-3 text-lg font-semibold text-white shadow-md transition hover:bg-canvas-dark-blue focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2"
                 >
                     Create Quiz
                 </Link>

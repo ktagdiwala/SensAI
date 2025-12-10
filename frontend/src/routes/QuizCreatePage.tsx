@@ -3,8 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import QuizCardInstructor from "../components/QuizCardInstructorComponent";
 import QuizQuestionInstructor from "../components/QuizQuestionComponentInstructor";
 import SearchIcon from "../assets/Search.svg";
+import FindQuestionModal from "../components/FindQuestionModal";
 import { useQuizQuestions } from "../hooks/useQuizQuestions";
-
 
 // ========================================
 // UI CONFIG: Tabs and option interfaces
@@ -57,6 +57,7 @@ export default function QuizCreatePage() {
     closeQuestionModal,
     handleDeleteQuestion,
     handleQuestionSave,
+    addExistingQuestionToQuiz,
   } = useQuizQuestions(quizId, courseId);
 
   // ========================================
@@ -68,17 +69,24 @@ export default function QuizCreatePage() {
   const [isCoursesLoading, setCoursesLoading] = useState(false);
   const [courseListError, setCourseListError] = useState<string | null>(null);
   const [courseSearchTerm, setCourseSearchTerm] = useState("");
+  const [isFindQuestionModalOpen, setFindQuestionModalOpen] = useState(false);
+
+  const selectedCourseTitle = useMemo(() => {
+    const selected = courses.find((course) => String(course.id) === courseId);
+    return selected ? selected.title : "";
+  }, [courses, courseId]);
 
   // ========================================
   // EFFECT: Lock/unlock body scroll when question modal is open
   // ========================================
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.body.style.overflow = isQuestionModalOpen ? "hidden" : "";
+    document.body.style.overflow =
+      isQuestionModalOpen || isFindQuestionModalOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isQuestionModalOpen]);
+  }, [isQuestionModalOpen, isFindQuestionModalOpen]);
 
   // ========================================
   // DERIVED STATE: Filtered list of courses by search term
@@ -388,8 +396,8 @@ export default function QuizCreatePage() {
               </>
             )}
 
-            {/* Actions: New question & Find questions (future) */}
-            <div className="flex justify-center gap-4 pt-2">
+            {/* New Question & Find Question buttons */}
+            <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
               <button
                 type="button"
                 onClick={openNewQuestionModal}
@@ -398,17 +406,31 @@ export default function QuizCreatePage() {
                 <span className="text-base">＋</span>
                 New Question
               </button>
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-              >
-                <img src={SearchIcon} alt="Find questions" className="h-4 w-4" />
-                Find Questions
-              </button>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={() => setFindQuestionModalOpen(true)}
+                  disabled={!courseId}
+                >
+                  <img src={SearchIcon} alt="Find question" className="h-4 w-4" />
+                  Find Question
+                </button>
+              </div>
             </div>
           </div>
         )}
       </main>
+
+      <FindQuestionModal
+        isOpen={isFindQuestionModalOpen}
+        courseId={courseId}
+        courseTitle={selectedCourseTitle}
+        quizId={quizId}
+        existingQuestionIds={questions.map((q) => q.id)}
+        onAddToQuiz={addExistingQuestionToQuiz}
+        onClose={() => setFindQuestionModalOpen(false)}
+      />
 
       {/* ========================================
          QUESTION MODAL
