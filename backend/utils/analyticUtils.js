@@ -9,12 +9,13 @@ const { pool } = require('../config/dbConnection'); // Import the DB connection
  * - Total quizzes
  * - Total courses
  * - Total questions per quiz
+ * - Total questions per course
  * - Total attempts per quiz
  */
 async function sensaiMetrics(){
 	// initialize a json object to hold all metrics
 	let metrics = {};
-	let sql = `SELECT * FROM
+	let sql1 = `SELECT * FROM
 		(SELECT COUNT(*) AS user_count FROM user) AS totalUsers,
 		(SELECT COUNT(*) AS student_count FROM user WHERE roleId = (SELECT roleId FROM role WHERE name='Student')) AS totalStudents,
 		(SELECT COUNT(*) AS instructor_count FROM user WHERE roleId = (SELECT roleId FROM role WHERE name='Instructor')) AS totalInstructors,
@@ -45,7 +46,7 @@ async function sensaiMetrics(){
 	
 	let sql3 = `SELECT quiz.quizId AS quizId, quiz.title AS quizTitle, COUNT(*) AS attempt_count FROM question_attempt JOIN quiz ON question_attempt.quizId = quiz.quizId GROUP BY question_attempt.quizId;`;
 	try{
-		const [result1] = await pool.query(sql);
+		const [result1] = await pool.query(sql1);
 		metrics.totals= {...result1[0]};
 		const [result2] = await pool.query(sql2);
 		metrics.questionsByQuiz = result2;
@@ -67,9 +68,72 @@ async function sensaiMetrics(){
  * - Average score
  * - Completion rate (percentage of students who completed the quiz)
  * - Average attempts per question
- * - Average AI messages per question per student
+ * - Average AI messages per question in this quiz
  */
+async function quizStats(quizId){
+	let sql = `SELECT 
+			userId, 
+			datetime,
+			quizId,
+			SUM(isCorrect) AS score,
+			AVG(numMsgs) AS avgMsgs
+		FROM question_attempt
+		WHERE quizId = ${quizId}
+		GROUP BY userId, datetime, quizId
+		HAVING COUNT(*) >= 2`;
+
+	// Retrieve students who completed the quiz
+	let sql2 = `SELECT DISTINCT userId 
+			FROM question_attempt
+			WHERE quizId = ${quizId}
+			GROUP BY userId, dateTime, quizId
+			HAVING COUNT(*) >= 2;`;
+
+	// Retrive total number of students
+	let sql3 = `SELECT COUNT(*) AS student_count FROM user WHERE roleId = 
+				(SELECT roleId FROM role WHERE name='Student')`;
+
+	try{
+		const [rows] = await pool.query(sql);
+		const totalAttempts = rows.length;
+		if(totalAttempts === 0){
+			return {
+				totalAttempts: 0,
+				averageScore: 0,
+				completionRate: 0,
+				avgAIMessages: 0
+			};
+		}
+		const averageScore = Math.round(rows.reduce((acc, curr) => acc + parseInt(curr.score), 0)/ (totalAttempts) *100) /100;
+		const avgAIMessages = Math.round(rows.reduce((acc, curr) => acc + parseFloat(curr.avgMsgs), 0) / (totalAttempts) *100) /100;
+
+		const [completedRows] = await pool.query(sql2);
+		const completedCount = completedRows.length;
+		const [studentCountRows] = await pool.query(sql3);
+		const totalStudents = studentCountRows[0].student_count;
+		if(totalStudents === 0){
+			return {
+				totalAttempts: 0,
+				averageScore: 0,
+				completionRate: 0,
+				avgAIMessages: 0
+			};
+		}
+		const completionRate = Math.round((parseFloat(completedCount) / totalStudents) * 100 *100) / 100;
+
+		return {
+			totalAttempts,
+			averageScore,
+			completionRate,
+			avgAIMessages
+		};
+	} catch (error) {
+		console.error("Error retrieving quiz stats:", error);
+		throw error;
+	}
+}
 
 module.exports = {
-	sensaiMetrics
+	sensaiMetrics,
+	quizStats
 };
