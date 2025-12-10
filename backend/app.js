@@ -19,6 +19,7 @@ const aiRoutes = require('./routes/aiRoutes');
 const userRoutes = require('./routes/userRoutes');
 const testRoutes = require('./routes/testRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const analyticRoutes = require('./routes/analyticRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -59,6 +60,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api', userRoutes);
 app.use('/api/test', testRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/analytic', analyticRoutes);
 
 // === Start the Server ===
 app.listen(PORT, () => {
