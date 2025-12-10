@@ -673,7 +673,7 @@ export default function QuizPage() {
 
             {showSubmissions && (
                 <div className="m-8">
-                    <QuizSubmissions />
+                    <QuizSubmissions quizId={quizId} />
                 </div>
             )}
         </div>

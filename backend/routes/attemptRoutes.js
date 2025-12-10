@@ -5,7 +5,8 @@ const {getStudents, recordQuestionAttempt,
 	recordQuizAttempt, getAttemptsByQuestion,
 	getAttemptsByQuiz, getAttemptsByStudent,
 	getAttemptsByStudentAndQuestion, getAttemptsByStudentAndQuiz,
-	getStudentQuizAttempts, getStudentQuestionAttemptsForQuiz, getPreviousQuizAttempts} = require('../utils/attemptUtils');
+	getStudentQuizAttempts, getStudentQuestionAttemptsForQuiz,
+	getPreviousQuizAttempts} = require('../utils/attemptUtils');
 const {getQuizSummary} = require('../utils/geminiUtils');
 
 // === Helper Functions ===
