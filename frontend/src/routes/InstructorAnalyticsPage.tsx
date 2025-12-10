@@ -86,7 +86,7 @@ export default function InstructorAnalyticsPage() {
 
             <div className="mt-8 rounded-2xl bg-white p-6 shadow-2xl shadow-slate-900/10">
                 <h2 className="text-lg font-semibold">Top Mistake Heatmap</h2>
-                <div className="mt-4 flex h-56 items-center justify-center rounded-xl bg-gradient-to-br from-rose-200 via-orange-400 to-amber-200 text-base font-semibold tracking-widest text-slate-800">
+                <div className="mt-4 flex h-56 items-center justify-center rounded-xl bg-linear-to-br from-rose-200 via-orange-400 to-amber-200 text-base font-semibold tracking-widest text-slate-800">
                     Heatmap Placeholder
                 </div>
             </div>

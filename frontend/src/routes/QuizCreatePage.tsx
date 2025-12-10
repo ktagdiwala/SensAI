@@ -3,8 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import QuizCardInstructor from "../components/QuizCardInstructorComponent";
 import QuizQuestionInstructor from "../components/QuizQuestionComponentInstructor";
 import SearchIcon from "../assets/Search.svg";
-import { useQuizQuestions } from "../hooks/useQuizQuestions";
 import FindQuestionModal from "../components/FindQuestionModal";
+import { useQuizQuestions } from "../hooks/useQuizQuestions";
 
 // ========================================
 // UI CONFIG: Tabs and option interfaces
@@ -57,6 +57,7 @@ export default function QuizCreatePage() {
     closeQuestionModal,
     handleDeleteQuestion,
     handleQuestionSave,
+    addExistingQuestionToQuiz,
   } = useQuizQuestions(quizId, courseId);
 
   // ========================================
@@ -425,6 +426,9 @@ export default function QuizCreatePage() {
         isOpen={isFindQuestionModalOpen}
         courseId={courseId}
         courseTitle={selectedCourseTitle}
+        quizId={quizId}
+        existingQuestionIds={questions.map((q) => q.id)}
+        onAddToQuiz={addExistingQuestionToQuiz}
         onClose={() => setFindQuestionModalOpen(false)}
       />
 

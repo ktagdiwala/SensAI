@@ -14,6 +14,9 @@ interface FindQuestionModalProps {
   courseId: string;
   courseTitle?: string;
   onClose: () => void;
+  quizId?: string;
+  existingQuestionIds?: number[];
+  onAddToQuiz?: (question: CourseQuestionPreview) => Promise<void>;
 }
 
 const COURSE_QUESTION_ENDPOINT = "http://localhost:3000/api/question/course";
@@ -23,10 +26,18 @@ export default function FindQuestionModal({
   courseId,
   courseTitle,
   onClose,
+  quizId,
+  existingQuestionIds = [],
+  onAddToQuiz,
 }: FindQuestionModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<CourseQuestionPreview[]>([]);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [addingId, setAddingId] = useState<number | null>(null);
+  const [addedIds, setAddedIds] = useState<number[]>([]);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !courseId) {
@@ -98,11 +109,57 @@ export default function FindQuestionModal({
     };
   }, [isOpen, onClose]);
 
+  const handleAdd = async (question: CourseQuestionPreview) => {
+    if (!quizId || !onAddToQuiz) return;
+    setAddError(null);
+    setDeleteError(null);
+    setAddingId(question.questionId);
+    try {
+      await onAddToQuiz(question);
+      setAddedIds((prev) => [...prev, question.questionId]);
+    } catch (err) {
+      console.error(err);
+      setAddError(
+        err instanceof Error ? err.message : "Unable to add question to quiz.",
+      );
+    } finally {
+      setAddingId(null);
+    }
+  };
+
+  const handleDeleteQuestion = async (questionId: number) => {
+    if (!questionId) return;
+    const confirmed = window.confirm(
+      "Delete this question from the database? This affects all quizzes using it.",
+    );
+    if (!confirmed) return;
+
+    setDeleteError(null);
+    setDeletingId(questionId);
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/question/delete/${questionId}`,
+        { method: "DELETE", credentials: "include" },
+      );
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.message ?? "Unable to delete question.");
+      }
+      setQuestions((prev) => prev.filter((q) => q.questionId !== questionId));
+      setAddedIds((prev) => prev.filter((id) => id !== questionId));
+    } catch (err) {
+      console.error(err);
+      setDeleteError(
+        err instanceof Error ? err.message : "Unable to delete question.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (!isOpen) {
     return null;
   }
-
-
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
@@ -147,6 +204,9 @@ export default function FindQuestionModal({
                             .map((choice) => choice.trim())
                             .filter(Boolean)
                         : [];
+                    const alreadyInQuiz =
+                      existingQuestionIds.includes(question.questionId) ||
+                      addedIds.includes(question.questionId);
                     return (
                       <li
                         key={`${question.questionId}-${index}`}
@@ -170,11 +230,41 @@ export default function FindQuestionModal({
                             Other answers: {distractors.join(", ")}
                           </p>
                         )}
+                        <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            disabled={
+                              !quizId ||
+                              alreadyInQuiz ||
+                              addingId === question.questionId
+                            }
+                            onClick={() => handleAdd(question)}
+                            className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {addingId === question.questionId
+                              ? "Adding..."
+                              : alreadyInQuiz
+                              ? "Added"
+                              : "Add to quiz"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQuestion(question.questionId)}
+                            disabled={deletingId === question.questionId}
+                            className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-1 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {deletingId === question.questionId
+                              ? "Deleting..."
+                              : "Delete question"}
+                          </button>
+                        </div>
                       </li>
                     );
                   })}
                 </ul>
               )}
+              {addError && <p className="mt-3 text-xs text-red-600">{addError}</p>}
+              {deleteError && <p className="mt-1 text-xs text-red-600">{deleteError}</p>}
             </>
           )}
         </div>
