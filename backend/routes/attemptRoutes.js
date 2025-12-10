@@ -5,7 +5,7 @@ const {getStudents, recordQuestionAttempt,
 	recordQuizAttempt, getAttemptsByQuestion,
 	getAttemptsByQuiz, getAttemptsByStudent,
 	getAttemptsByStudentAndQuestion, getAttemptsByStudentAndQuiz,
-	getStudentQuizAttempts, getStudentQuestionAttemptsForQuiz} = require('../utils/attemptUtils');
+	getStudentQuizAttempts, getStudentQuestionAttemptsForQuiz, getPreviousQuizAttempts} = require('../utils/attemptUtils');
 const {getQuizSummary} = require('../utils/geminiUtils');
 
 // === Helper Functions ===
@@ -295,6 +295,32 @@ router.get('/student/quiz/:quizId/attempts', verifySessionStudent, async (req, r
 	}catch(error){
 		console.error('Error retrieving question attempts for student quiz at specified time:', error);
 		return res.status(500).json({message: 'Error retrieving question attempts for student quiz at specified time.'});
+	}
+});
+
+// GET /student/quiz/:quizId/previous-attempts
+// Retrieve all previous attempts for logged-in student for a specific quiz
+// Returns: total number of attempts, list of all attempts with scores and datetimes, highest score, and datetime of highest score
+router.get('/student/quiz/:quizId/previous-attempts', verifySessionStudent, async (req, res) => {
+	const {userId} = req.session;
+	const {quizId} = req.params;
+
+	if(!isValidPositiveInt(quizId)){
+		return res.status(400).json({message: 'quizId must be a positive integer.'});
+	}
+
+	try{
+		const attemptHistory = await getPreviousQuizAttempts(userId, quizId);
+		return res.status(200).json({
+			totalAttempts: attemptHistory.totalAttempts,
+			previousAttempts: attemptHistory.previousAttempts,
+			highestScore: attemptHistory.highestScore,
+			highestScoreDatetime: attemptHistory.highestScoreDatetime,
+			totalQuestions: attemptHistory.totalQuestions
+		});
+	}catch(error){
+		console.error('Error retrieving previous quiz attempts:', error);
+		return res.status(500).json({message: 'Error retrieving previous quiz attempts.'});
 	}
 });
 

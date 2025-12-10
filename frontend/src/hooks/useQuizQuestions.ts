@@ -2,6 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import type { InstructorQuestion } from "../components/QuizCardInstructorComponent";
 import { mapServerQuestion } from "../utils/questionMapping";
 
+type CourseQuestionPreview = {
+  questionId: number;
+  title: string;
+  correctAns: string;
+  otherAns: string;
+  prompt: string | null;
+  courseId: number;
+};
+
 type SaveOptions = {
   isNew: boolean;
 };
@@ -19,6 +28,7 @@ type UseQuizQuestionsResult = {
   closeQuestionModal: () => void;
   handleDeleteQuestion: (id: number) => void;
   handleQuestionSave: (question: InstructorQuestion, options: SaveOptions) => Promise<void>;
+  addExistingQuestionToQuiz: (question: CourseQuestionPreview) => Promise<void>;
 };
 
 export function useQuizQuestions(
@@ -124,16 +134,13 @@ export function useQuizQuestions(
   function handleDeleteQuestion(id: number) {
     setQuestionsError(null);
     const target = questions.find((question) => question.id === id);
-    if (!target) {
-      return;
-    }
+    if (!target) return;
 
-    const questionIdNumber = target.id;
     const previous = questions;
     setQuestions((prev) => prev.filter((question) => question.id !== id));
 
     if (!quizId || !target.isPersisted) {
-      return;
+      return; // new/unsaved questions are only local
     }
 
     const quizIdNumber = Number(quizId);
@@ -149,31 +156,19 @@ export function useQuizQuestions(
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ quizId: quizIdNumber, questionId: questionIdNumber }),
+          body: JSON.stringify({ quizId: quizIdNumber, questionId: target.id }),
         });
 
         if (!response.ok) {
           const errorPayload = await response.json().catch(() => null);
           throw new Error(errorPayload?.message ?? "Failed to remove question from quiz.");
         }
-
-        const deleteResponse = await fetch(
-          `http://localhost:3000/api/question/delete/${questionIdNumber}`,
-          { method: "DELETE", credentials: "include" },
-        );
-
-        if (!deleteResponse.ok) {
-          const errorPayload = await deleteResponse.json().catch(() => null);
-          setQuestionsError(
-            errorPayload?.message ?? "Question detached, but deletion failed.",
-          );
-        }
       } catch (error) {
         console.error(error);
         setQuestionsError(
           error instanceof Error ? error.message : "Failed to remove question.",
         );
-        setQuestions(previous);
+        setQuestions(previous); // roll back optimistic update
       }
     })();
   }
@@ -313,6 +308,51 @@ export function useQuizQuestions(
     setEditingQuestion(null);
   }
 
+  async function addExistingQuestionToQuiz(question: CourseQuestionPreview): Promise<void> {
+    if (!quizId) {
+      throw new Error("Save quiz details before adding questions.");
+    }
+
+    const quizIdNumber = Number(quizId);
+    if (Number.isNaN(quizIdNumber)) {
+      throw new Error("Invalid quiz identifier.");
+    }
+
+    const alreadyAdded = questions.some((q) => q.id === question.questionId);
+    if (alreadyAdded) {
+      return;
+    }
+
+    setQuestionsError(null);
+
+    const response = await fetch("http://localhost:3000/api/question/addToQuiz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        quizId: quizIdNumber,
+        questionId: question.questionId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => null);
+      throw new Error(errorBody?.message ?? "Unable to attach question to quiz.");
+    }
+
+    setQuestions((prev) => {
+      const mapped = mapServerQuestion({
+        questionId: question.questionId,
+        title: question.title,
+        correctAns: question.correctAns,
+        otherAns: question.otherAns,
+        prompt: question.prompt,
+        courseId: question.courseId,
+      });
+      return [...prev, { ...mapped, isPersisted: true }];
+    });
+  }
+
   return {
     questions,
     isLoadingQuestions,
@@ -326,5 +366,6 @@ export function useQuizQuestions(
     closeQuestionModal,
     handleDeleteQuestion,
     handleQuestionSave,
+    addExistingQuestionToQuiz,
   };
 }

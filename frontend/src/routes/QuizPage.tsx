@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../authentication/AuthContext";
 import QuizSubmissions from "../components/QuizSubmissions";
+import { jsPDF } from "jspdf";
 
 type ConfidenceLevel = 0 | 1 | 2;
 
@@ -102,9 +103,22 @@ export default function QuizPage() {
     const saveAllChats = async (useBeacon: boolean = false) => {
         try {
             if (!quizId) return;
+            
+            // Helper function to remove emojis from text
+            const removeEmojis = (text: string) => {
+                return text.replace(/[\p{Emoji}\p{Emoji_Component}]/gu, '').trim();
+            };
+            
             const chats = Object.entries(chatMap)
                 .filter(([_, chat]) => chat && chat.length > 0)
-                .map(([questionId, chat]) => ({ quizId, questionId, chat }));
+                .map(([questionId, chat]) => ({
+                    quizId,
+                    questionId,
+                    chat: chat.map((msg: any) => ({
+                        ...msg,
+                        content: removeEmojis(msg.content || '')
+                    }))
+                }));
             if (chats.length === 0) return;
             const url = `${API_BASE_URL}/chat/save-batch`;
             const payload = JSON.stringify({ chats });
@@ -459,6 +473,135 @@ export default function QuizPage() {
         setChatResetSignals((prev) => ({ ...prev, [questionId]: (prev[questionId] ?? 0) + 1 }));
     }, []);
 
+
+    // Download all chats as PDF
+    const downloadAllChats = () => {
+        // Check if there are any chats to download
+        const hasChats = Object.values(chatMap).some(chats => chats && chats.length > 0);
+        if (!hasChats) {
+            alert("No chat history to download.");
+            return;
+        }
+
+        // Sanitize quiz title for filename
+        const safeTitle = quizTitle
+            ? quizTitle.replace(/[^a-z0-9\-_]+/gi, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '')
+            : `quiz${quizId}`;
+
+        // Create PDF
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 20;
+        const maxWidth = pageWidth - 2 * margin;
+        let yPosition = margin;
+
+        // Set default font
+        doc.setFont("helvetica");
+
+        // Title
+        doc.setFontSize(16);
+        doc.text("SensAI Chat History - All Questions", margin, yPosition);
+        yPosition += 10;
+
+        // Quiz Title
+        if (quizTitle) {
+            doc.setFontSize(12);
+            doc.text(`Quiz: ${quizTitle}`, margin, yPosition);
+            yPosition += 8;
+        }
+
+        // Iterate through all questions and their chats
+        questions.forEach((question, idx) => {
+            const messages = chatMap[question.id];
+            
+            // Skip if no chats for this question
+            if (!messages || messages.length === 0) {
+                return;
+            }
+
+            // Add question heading and content
+            doc.setFontSize(12);
+            const qHeading = `Question ${idx + 1}: ${question.description}`;
+            const qLines = doc.splitTextToSize(qHeading, maxWidth);
+            if (yPosition + qLines.length * 7 > pageHeight - margin) {
+                doc.addPage();
+                yPosition = margin;
+            }
+            doc.text(qLines, margin, yPosition);
+            yPosition += qLines.length * 7 + 1;
+
+            // Add question options if available
+            if (question.choices && question.choices.length > 0) {
+                doc.setFontSize(11);
+                const bulletOptions = question.choices.map((choice) => `- ${choice.label}`);
+                const optLines = doc.splitTextToSize(bulletOptions.join("\n"), maxWidth);
+                if (yPosition + optLines.length * 7 > pageHeight - margin) {
+                    doc.addPage();
+                    yPosition = margin;
+                }
+                doc.text(optLines, margin, yPosition);
+                yPosition += optLines.length * 7 + 1;
+            }
+
+            // Add chat messages
+            doc.setFontSize(11);
+            messages.forEach((msg, idx) => {
+                const role = msg.role === "user" ? "Student" : "SensAI";
+                // Remove only emojis from message content for PDF display (preserve numbers and text)
+                let cleanContent = (msg.content || "")
+                    .replace(/[\u{1F600}-\u{1F64F}]/gu, '') // Emoticons
+                    .replace(/[\u{1F300}-\u{1F5FF}]/gu, '') // Misc Symbols and Pictographs
+                    .replace(/[\u{1F680}-\u{1F6FF}]/gu, '') // Transport and Map
+                    .replace(/[\u{1F1E0}-\u{1F1FF}]/gu, '') // Flags
+                    .replace(/[\u{2600}-\u{26FF}]/gu, '')   // Misc symbols
+                    .replace(/[\u{2700}-\u{27BF}]/gu, '')   // Dingbats
+                    .trim();
+                
+                // Break up very long words with no spaces (replace runs of 50+ chars with line breaks)
+                cleanContent = cleanContent.replace(/(\S{50})/g, '$1\n');
+                
+                const prefix = `${role}: `;
+                const fullText = prefix + cleanContent;
+                
+                // Split content into lines with proper width calculation
+                const textLines = doc.splitTextToSize(fullText, maxWidth);
+                
+                // Filter out empty lines that splitTextToSize might create
+                const nonEmptyLines = textLines.filter((line: string) => line.trim().length > 0);
+
+                // Check if we need a new page
+                if (yPosition + nonEmptyLines.length * 5 > pageHeight - margin) {
+                    doc.addPage();
+                    yPosition = margin;
+                }
+
+                // Render each line individually to avoid splitTextToSize rendering issues
+                nonEmptyLines.forEach((line: string) => {
+                    doc.text(line, margin, yPosition);
+                    yPosition += 5;
+                });
+                
+                // Reduce spacing between consecutive messages from same sender, keep normal spacing for role changes
+                const nextMsg = messages[idx + 1];
+                const nextRole = nextMsg ? (nextMsg.role === "user" ? "Student" : "SensAI") : null;
+                const spacing = nextRole === role ? 2 : 5;
+                yPosition += spacing;
+            });
+
+            // Add spacing between questions
+            yPosition += 10;
+            if (yPosition > pageHeight - margin - 10) {
+                doc.addPage();
+                yPosition = margin;
+            }
+        });
+
+        // Download PDF
+        doc.save(`${safeTitle}_all_chats.pdf`);
+    };
+
+    // Mark a question as checked
     const handleQuestionChecked = useCallback((questionId: string) => {
         setCheckedQuestions((prev) => ({ ...prev, [questionId]: true }));
     }, []);
@@ -519,6 +662,13 @@ export default function QuizPage() {
                 onClick={() => setShowSubmissions((prev) => !prev)}
             >
                 {showSubmissions ? "Hide" : "View"} Quiz Submissions
+            </button>
+
+            <button
+                className="bg-gray-200 text-gray-800 m-8 p-2 rounded-md"
+                onClick={downloadAllChats}
+            >
+                Download All Chats
             </button>
 
             {showSubmissions && (

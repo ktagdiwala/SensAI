@@ -7,6 +7,7 @@ import StudentPage from './routes/StudentPage';
 import QuizPage from './routes/QuizPage';
 import AccountPage from './routes/Accountpage';
 import QuizCreatePage from './routes/QuizCreatePage';
+import InstructorAnalyticsPage from './routes/InstructorAnalyticsPage';
 import { AuthProvider, useAuth } from './authentication/AuthContext';
 
 type RoleRouteProps = {
@@ -90,6 +91,14 @@ function AppRoutes() {
             <ProtectedRoute>
               <AccountPage />
             </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/instructor/analytics"
+          element={
+            <RoleRoute allowedRole="Instructor">
+              <InstructorAnalyticsPage />
+            </RoleRoute>
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
