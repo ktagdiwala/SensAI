@@ -93,6 +93,9 @@ async function quizStats(quizId){
 	let sql3 = `SELECT COUNT(*) AS student_count FROM user WHERE roleId = 
 				(SELECT roleId FROM role WHERE name='Student')`;
 
+	// Retrieve total number of questions in the quiz
+	let sql4 = `SELECT COUNT(*) AS question_count FROM quiz_questions WHERE quizId = ${quizId}`;
+
 	try{
 		const [rows] = await pool.query(sql);
 		const totalAttempts = rows.length;
@@ -104,13 +107,17 @@ async function quizStats(quizId){
 				avgAIMessages: 0
 			};
 		}
-		const averageScore = Math.round(rows.reduce((acc, curr) => acc + parseInt(curr.score), 0)/ (totalAttempts) *100) /100;
+		const [questionCountRows] = await pool.query(sql4);
+		const totalQuestions = questionCountRows[0].question_count;
+		
+		const averageScore =  Math.round(rows.reduce((acc, curr) => acc + parseInt(curr.score), 0)/ (totalAttempts) *100) /100 + '/' + totalQuestions;
 		const avgAIMessages = Math.round(rows.reduce((acc, curr) => acc + parseFloat(curr.avgMsgs), 0) / (totalAttempts) *100) /100;
 
 		const [completedRows] = await pool.query(sql2);
 		const completedCount = completedRows.length;
 		const [studentCountRows] = await pool.query(sql3);
 		const totalStudents = studentCountRows[0].student_count;
+
 		if(totalStudents === 0){
 			return {
 				totalAttempts: 0,
