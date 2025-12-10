@@ -171,6 +171,7 @@ async function questionInsights(quizId){
 	) SELECT
 		fa.questionId AS questionNumber,
 		q.title AS title,
+		q.correctAns AS correctAns,
 		CAST(AVG(fa.isCorrect) AS REAL) AS percent_correct,
 		CAST(AVG(fa.numMsgs) AS REAL) AS avg_msgs,
 		CAST(AVG(fa.selfConfidence) AS REAL) AS avg_confidence

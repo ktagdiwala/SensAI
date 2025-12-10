@@ -46,6 +46,15 @@ interface QuizStats {
     avgAIMessages: number;
 }
 
+interface QuestionStat {
+    questionNumber: number;
+    title: string;
+    correctAns: string;
+    percent_correct: number;
+    avg_msgs: number;
+    avg_confidence: number;
+}
+
 const API_BASE = "http://localhost:3000/api";
 
 export default function InstructorAnalyticsPage() {
@@ -56,11 +65,13 @@ export default function InstructorAnalyticsPage() {
     
     const [metrics, setMetrics] = useState<Metrics | null>(null);
     const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
+    const [questionStats, setQuestionStats] = useState<QuestionStat[]>([]);
     
     const [loadingCourses, setLoadingCourses] = useState(true);
     const [loadingQuizzes, setLoadingQuizzes] = useState(false);
     const [loadingMetrics, setLoadingMetrics] = useState(true);
     const [loadingStats, setLoadingStats] = useState(false);
+    const [loadingQuestionStats, setLoadingQuestionStats] = useState(false);
     
     const [error, setError] = useState<string | null>(null);
 
@@ -170,6 +181,34 @@ export default function InstructorAnalyticsPage() {
         };
 
         fetchQuizStats();
+    }, [selectedQuizId]);
+
+    // Fetch question statistics
+    useEffect(() => {
+        if (!selectedQuizId) {
+            setQuestionStats([]);
+            return;
+        }
+
+        const fetchQuestionStats = async () => {
+            setLoadingQuestionStats(true);
+            try {
+                const response = await fetch(`${API_BASE}/analytic/questionStats/${selectedQuizId}`, {
+                    credentials: "include",
+                });
+                if (!response.ok) throw new Error("Failed to fetch question stats");
+                const data = await response.json();
+                setQuestionStats(Array.isArray(data.insights) ? data.insights : []);
+            } catch (err) {
+                console.error("Error fetching question stats:", err);
+                setError("Failed to load question statistics");
+                setQuestionStats([]);
+            } finally {
+                setLoadingQuestionStats(false);
+            }
+        };
+
+        fetchQuestionStats();
     }, [selectedQuizId]);
 
     const metricCards = metrics ? [
@@ -299,9 +338,89 @@ export default function InstructorAnalyticsPage() {
                 {/* Placeholder sections */}
                 <div className="mt-8 rounded-xl bg-white p-6 shadow-md">
                     <h2 className="mb-4 text-lg font-semibold text-gray-900">Question Insights</h2>
-                    <div className="flex h-32 items-center justify-center rounded-lg bg-gray-50 text-gray-600">
-                        Coming soon: Question-level analytics
-                    </div>
+                    {loadingQuestionStats ? (
+                        <div className="flex h-32 items-center justify-center rounded-lg bg-gray-50 text-gray-600">
+                            Loading question statistics...
+                        </div>
+                    ) : selectedQuizId && questionStats.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b border-gray-200">
+                                        <th className="px-2 py-3 text-center text-sm font-semibold text-gray-700 w-12">
+                                            Question #
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                                            Question Title
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">
+                                            Correct Answer
+                                        </th>
+                                        <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">
+                                            % Correct (1st Attempt)
+                                        </th>
+                                        <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">
+                                            Avg AI Messages
+                                        </th>
+                                        <th className="px-6 py-3 text-center text-sm font-semibold text-gray-700">
+                                            Avg Confidence
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {questionStats.map((stat, index) => (
+                                        <tr
+                                            key={stat.questionNumber}
+                                            className={`border-b border-gray-200 hover:bg-indigo-50 transition-colors ${
+                                                index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                                            }`}
+                                        >
+                                            <td className="px-2 py-4 text-sm font-medium text-gray-900 w-12 text-center">
+                                                {index + 1}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-700">
+                                                {stat.title}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-700 font-medium">
+                                                <span className="inline-block bg-blue-50 border border-blue-200 rounded px-3 py-1 text-blue-900">
+                                                    {stat.correctAns}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-sm text-gray-700">
+                                                <span className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-semibold ${
+                                                    stat.percent_correct >= 75 ? "bg-green-100 text-green-800" :
+                                                    stat.percent_correct >= 50 ? "bg-yellow-100 text-yellow-800" :
+                                                    "bg-red-100 text-red-800"
+                                                }`}>
+                                                    {stat.percent_correct}%
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-sm text-gray-700">
+                                                {stat.avg_msgs}
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-sm text-gray-700">
+                                                <div className="flex items-center justify-center">
+                                                    <div className="w-32 bg-gray-200 rounded-full h-2">
+                                                        <div
+                                                            className="bg-indigo-600 h-2 rounded-full"
+                                                            style={{ width: `${(stat.avg_confidence / 2) * 100}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="ml-2 text-sm font-medium">
+                                                        {stat.avg_confidence.toFixed(2)} / 2.0
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="flex h-32 items-center justify-center rounded-lg bg-gray-50 text-gray-600">
+                            {selectedQuizId ? "No question data available" : "Select a quiz to view question insights"}
+                        </div>
+                    )}
                 </div>
 
                 <div className="mt-8 rounded-xl bg-white p-6 shadow-md">
