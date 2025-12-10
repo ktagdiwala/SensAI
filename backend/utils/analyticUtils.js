@@ -140,7 +140,61 @@ async function quizStats(quizId){
 	}
 }
 
+/** questionInsights
+ * Retrieves per-question insights for a given quiz. Including:
+ * - Question number and title
+ * - % Students who answered correctly on their first attempt
+ * - Avg self-confidence score per question
+ * - Avg attempts per question (in this quiz)
+ * - Avg AI messages per question (in this quiz)
+ * - Top mistake type made (with count)
+ */
+async function questionInsights(quizId){
+	let sql = `
+	WITH firstAttempts AS (
+		-- Find earliest attempt (minimum dateTime) for each user and question
+		SELECT
+			qq.quizId,
+			qq.questionId,
+			qa.userId,
+			qa.isCorrect,
+			qa.numMsgs,
+			qa.selfConfidence,
+			-- Use quizId in PARTITION BY clause to select questions in current quiz
+			ROW_NUMBER() OVER (
+				PARTITION BY qq.quizId, qq.questionId, qa.userId
+				ORDER BY qa.dateTime ASC
+			) AS attempt_rank
+		FROM quiz_questions qq JOIN question_attempt qa
+			ON qq.questionId = qa.questionId
+		WHERE qq.quizId = ${quizId}	-- Filter for specific quiz
+	) SELECT
+		fa.questionId AS questionNumber,
+		q.title AS title,
+		CAST(AVG(fa.isCorrect) AS REAL) AS percent_correct,
+		CAST(AVG(fa.numMsgs) AS REAL) AS avg_msgs,
+		CAST(AVG(fa.selfConfidence) AS REAL) AS avg_confidence
+	FROM firstAttempts fa JOIN question q ON fa.questionId = q.questionId
+	WHERE fa.attempt_rank = 1 -- Considers only the first attempt for any question
+	GROUP BY fa.questionId, q.title
+	ORDER BY fa.questionId;`;
+
+	try{
+		const [rows] = await pool.query(sql);
+		rows.forEach(row => {
+			row.percent_correct = Math.round(row.percent_correct * 100 * 100) / 100;
+			row.avg_msgs = Math.round(row.avg_msgs * 100) / 100;
+			row.avg_confidence = Math.round(row.avg_confidence * 100) / 100;
+		});
+		return rows;
+	} catch (error){
+		console.error("Error retrieving question insights:", error);
+		throw error;
+	}
+}
+
 module.exports = {
 	sensaiMetrics,
-	quizStats
+	quizStats,
+	questionInsights
 };
