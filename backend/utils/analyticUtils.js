@@ -1,0 +1,201 @@
+const { pool } = require('../config/dbConnection'); // Import the DB connection
+
+// This file contains utility functions for overall metrics
+// and per-quiz Key Performance Indicator (KPI) analytics
+
+/** sensaiMetrics
+ * Fetches overall Sensai platform metrics including:
+ * - Total users (students and instructors)
+ * - Total quizzes
+ * - Total courses
+ * - Total questions per quiz
+ * - Total questions per course
+ * - Total attempts per quiz
+ */
+async function sensaiMetrics(){
+	// initialize a json object to hold all metrics
+	let metrics = {};
+	let sql1 = `SELECT * FROM
+		(SELECT COUNT(*) AS user_count FROM user) AS totalUsers,
+		(SELECT COUNT(*) AS student_count FROM user WHERE roleId = (SELECT roleId FROM role WHERE name='Student')) AS totalStudents,
+		(SELECT COUNT(*) AS instructor_count FROM user WHERE roleId = (SELECT roleId FROM role WHERE name='Instructor')) AS totalInstructors,
+		(SELECT COUNT(*) AS quiz_count FROM quiz) AS totalQuizzes,
+		(SELECT COUNT(*) AS course_count FROM course) AS totalCourses;`;
+
+	let sql2 = `SELECT 
+		course.courseId,
+		course.title AS courseName,
+		quiz.quizId,
+		quiz.title AS quizTitle,
+		COUNT(*) AS question_count
+	FROM quiz_questions
+	JOIN quiz ON quiz_questions.quizId = quiz.quizId
+	JOIN course ON quiz.courseId = course.courseId
+	GROUP BY course.courseId, course.title, quiz.quizId, quiz.title
+	ORDER BY course.courseId, quiz.quizId;`;
+	
+	let sql2Total = `SELECT 
+		course.courseId,
+		course.title AS courseName,
+		COUNT(*) AS total_questions_per_course
+	FROM quiz_questions
+	JOIN quiz ON quiz_questions.quizId = quiz.quizId
+	JOIN course ON quiz.courseId = course.courseId
+	GROUP BY course.courseId, course.title
+	ORDER BY course.courseId;`;
+	
+	let sql3 = `SELECT quiz.quizId AS quizId, quiz.title AS quizTitle, COUNT(*) AS attempt_count FROM question_attempt JOIN quiz ON question_attempt.quizId = quiz.quizId GROUP BY question_attempt.quizId;`;
+	try{
+		const [result1] = await pool.query(sql1);
+		metrics.totals= {...result1[0]};
+		const [result2] = await pool.query(sql2);
+		metrics.questionsByQuiz = result2;
+		const [result2Total] = await pool.query(sql2Total);
+		metrics.questionsByCourse = result2Total;
+		const [result3] = await pool.query(sql3);
+		metrics.totalAttempts = result3;
+		// console.log(metrics);
+		return metrics;
+	} catch (error){
+		console.error("Error retrieving Sensai metrics:", error);
+		throw error;
+	}
+}
+
+/** quizStats
+ * Fetches basic statistics for a given quiz. Including:
+ * - Total quiz attempts
+ * - Average score
+ * - Completion rate (percentage of students who completed the quiz)
+ * - Average attempts per question
+ * - Average AI messages per question in this quiz
+ */
+async function quizStats(quizId){
+	let sql = `SELECT 
+			userId, 
+			datetime,
+			quizId,
+			SUM(isCorrect) AS score,
+			AVG(numMsgs) AS avgMsgs
+		FROM question_attempt
+		WHERE quizId = ${quizId}
+		GROUP BY userId, datetime, quizId
+		HAVING COUNT(*) >= 2`;
+
+	// Retrieve students who completed the quiz
+	let sql2 = `SELECT DISTINCT userId 
+			FROM question_attempt
+			WHERE quizId = ${quizId}
+			GROUP BY userId, dateTime, quizId
+			HAVING COUNT(*) >= 2;`;
+
+	// Retrive total number of students
+	let sql3 = `SELECT COUNT(*) AS student_count FROM user WHERE roleId = 
+				(SELECT roleId FROM role WHERE name='Student')`;
+
+	// Retrieve total number of questions in the quiz
+	let sql4 = `SELECT COUNT(*) AS question_count FROM quiz_questions WHERE quizId = ${quizId}`;
+
+	try{
+		const [rows] = await pool.query(sql);
+		const totalAttempts = rows.length;
+		if(totalAttempts === 0){
+			return {
+				totalAttempts: 0,
+				averageScore: 0,
+				completionRate: 0,
+				avgAIMessages: 0
+			};
+		}
+		const [questionCountRows] = await pool.query(sql4);
+		const totalQuestions = questionCountRows[0].question_count;
+		
+		const averageScore =  Math.round(rows.reduce((acc, curr) => acc + parseInt(curr.score), 0)/ (totalAttempts) *100) /100 + '/' + totalQuestions;
+		const avgAIMessages = Math.round(rows.reduce((acc, curr) => acc + parseFloat(curr.avgMsgs), 0) / (totalAttempts) *100) /100;
+
+		const [completedRows] = await pool.query(sql2);
+		const completedCount = completedRows.length;
+		const [studentCountRows] = await pool.query(sql3);
+		const totalStudents = studentCountRows[0].student_count;
+
+		if(totalStudents === 0){
+			return {
+				totalAttempts: 0,
+				averageScore: 0,
+				completionRate: 0,
+				avgAIMessages: 0
+			};
+		}
+		const completionRate = Math.round((parseFloat(completedCount) / totalStudents) * 100 *100) / 100;
+
+		return {
+			totalAttempts,
+			averageScore,
+			completionRate,
+			avgAIMessages
+		};
+	} catch (error) {
+		console.error("Error retrieving quiz stats:", error);
+		throw error;
+	}
+}
+
+/** questionInsights
+ * Retrieves per-question insights for a given quiz. Including:
+ * - Question number and title
+ * - % Students who answered correctly on their first attempt
+ * - Avg self-confidence score per question
+ * - Avg attempts per question (in this quiz)
+ * - Avg AI messages per question (in this quiz)
+ * - Top mistake type made (with count)
+ */
+async function questionInsights(quizId){
+	let sql = `
+	WITH firstAttempts AS (
+		-- Find earliest attempt (minimum dateTime) for each user and question
+		SELECT
+			qq.quizId,
+			qq.questionId,
+			qa.userId,
+			qa.isCorrect,
+			qa.numMsgs,
+			qa.selfConfidence,
+			-- Use quizId in PARTITION BY clause to select questions in current quiz
+			ROW_NUMBER() OVER (
+				PARTITION BY qq.quizId, qq.questionId, qa.userId
+				ORDER BY qa.dateTime ASC
+			) AS attempt_rank
+		FROM quiz_questions qq JOIN question_attempt qa
+			ON qq.questionId = qa.questionId
+		WHERE qq.quizId = ${quizId}	-- Filter for specific quiz
+	) SELECT
+		fa.questionId AS questionNumber,
+		q.title AS title,
+		q.correctAns AS correctAns,
+		CAST(AVG(fa.isCorrect) AS REAL) AS percent_correct,
+		CAST(AVG(fa.numMsgs) AS REAL) AS avg_msgs,
+		CAST(AVG(fa.selfConfidence) AS REAL) AS avg_confidence
+	FROM firstAttempts fa JOIN question q ON fa.questionId = q.questionId
+	WHERE fa.attempt_rank = 1 -- Considers only the first attempt for any question
+	GROUP BY fa.questionId, q.title
+	ORDER BY fa.questionId;`;
+
+	try{
+		const [rows] = await pool.query(sql);
+		rows.forEach(row => {
+			row.percent_correct = Math.round(row.percent_correct * 100 * 100) / 100;
+			row.avg_msgs = Math.round(row.avg_msgs * 100) / 100;
+			row.avg_confidence = Math.round(row.avg_confidence * 100) / 100;
+		});
+		return rows;
+	} catch (error){
+		console.error("Error retrieving question insights:", error);
+		throw error;
+	}
+}
+
+module.exports = {
+	sensaiMetrics,
+	quizStats,
+	questionInsights
+};
