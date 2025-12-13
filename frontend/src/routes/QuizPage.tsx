@@ -615,7 +615,7 @@ export default function QuizPage() {
     }, []);
 
     return (
-        <div>
+        <div className="mx-auto max-w-7xl">
             {questions.map((q, idx) => (
                 <QuestionCard
                     key={`${q.id}-${idx}`}

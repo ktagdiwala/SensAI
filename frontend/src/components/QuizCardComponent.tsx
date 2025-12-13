@@ -129,17 +129,9 @@ export default function QuestionCard({
                             Question {displayNumber ?? data.id}
                         </h2>
                         
-                        <div className="flex gap-x-3">
-                            <img
-                                src="/message-square.svg"
-                                alt="Open chat"
-                                style={{ cursor: "pointer", width: 24, height: 24, verticalAlign: "middle" }}
-                                onClick={() => setIsChatOpen((v) => !v)}
-                            />
-                            {data.points != null && (
-                                <div className="text-sm text-gray-700 font-bold">{data.points} pts</div>
-                            )}
-                        </div>
+                        {data.points != null && (
+                            <div className="text-sm text-gray-700 font-bold">{data.points} pts</div>
+                        )}
                     </div>
 
                     {/**Description */}
@@ -188,6 +180,18 @@ export default function QuestionCard({
                             } border-none`}
                         >
                             {submitting ? "Checking…" : "Check Answer"}
+                        </button>
+
+                        <button
+                            onClick={() => setIsChatOpen((v) => !v)}
+                            disabled={forceDisabled}
+                            className={`px-6 py-3 rounded-sm font-semibold text-white ${
+                                forceDisabled
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : "bg-[#34A3C1] hover:opacity-90 cursor-pointer"
+                            } border-none`}
+                        >
+                            Ask SensAI
                         </button>
 
                         {hasCheckedAnswer && (

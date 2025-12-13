@@ -318,7 +318,7 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
                     <div className="flex items-center justify-between gap-4 px-6 py-4">
                         <div className="flex items-center gap-2">
                             <img src={MainIcon} alt="SensAi logo" className="w-6 h-6" />
-                            <p className="text-sm font-semibold text-gray-900">SensAi</p>
+                            <p className="text-sm font-semibold text-gray-900">SensAI</p>
                         </div>
 
                         <div className="flex items-center gap-2">
