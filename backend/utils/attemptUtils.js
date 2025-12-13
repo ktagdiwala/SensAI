@@ -169,7 +169,13 @@ async function recordQuizAttempt(userId, quizId, questionArray){
 	const dateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
 	for(const question of questionArray){
 		const { questionId, givenAns, numMsgs=0, chatHistory="", selfConfidence=null, hasCheckedAnswer=false } = question;
-		const { isCorrect, mistakeId } = await recordQuestionAttempt(userId, questionId, quizId, givenAns, chatHistory, numMsgs, selfConfidence, dateTime, hasCheckedAnswer);
+		const result = await recordQuestionAttempt(userId, questionId, quizId, givenAns, chatHistory, numMsgs, selfConfidence, dateTime, hasCheckedAnswer);
+		if(result === null){
+			console.error(`Failed to record attempt for question ${questionId}`);
+			questionFeedback.push({ questionId, givenAns, isCorrect: 0, mistakeId: null });
+			continue;
+		}
+		const { isCorrect, mistakeId } = result;
 		questionFeedback.push({ questionId, givenAns, isCorrect, mistakeId });
 		score += isCorrect;
 	}

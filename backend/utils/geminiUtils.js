@@ -72,15 +72,17 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="", userId){
 	// This function is called only if the student answer was incorrect.
 	// Thus, if their selfConfidence is 0, we assume the student guessed the answer.
+	const mistakeTypes = await getMistakeTypes();
+	// If selfConfidence is 0, we directly return the MistakeId for "No Attempt or Guess"
+	// determine which mistake id corresponds to no attempt or guess
+	const noAttemptMistake = mistakeTypes.find(mistake => mistake.label.toLowerCase() === "no attempt or guess");
 	if(selfConfidence === 0){
-		// MistakeId 7 corresponds to No Attempt or Guess
-		return 7;
+			return noAttemptMistake ? noAttemptMistake.mistakeId : 1;
 	}
 	const {title: questionText, correctAns} = await getQuestionById(questionId);
 	if(!questionText || correctAns === null || correctAns === undefined){
 		throw new Error("Error retrieving question details.");
 	}
-	const mistakeTypes = await getMistakeTypes();
 	if(mistakeTypes === null){
 		throw new Error("Error retrieving mistake types.");
 	} else if(mistakeTypes.length === 0){
