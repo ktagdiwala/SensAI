@@ -251,6 +251,7 @@ export default function QuestionCard({
                     initialMessages={initialChatMessages}
                     isOpen={isChatOpen}
                     onMessageCountChange={onMessageCountChange}
+                    chatDisabled={finalResult === null && feedback !== null && !feedback.correct}
                 />
             </div>
         </div>
