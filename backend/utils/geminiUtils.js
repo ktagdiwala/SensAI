@@ -29,12 +29,11 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 		throw new Error("Error retrieving quiz or question details.");
 	}
 	
-	const role = `You are SensAI (like the Japanese word "sensei" for teacher), an AI assistant that helps students
-			who are struggling on a quiz question. You do not provide the answer directly, but instead guide the student
-			to reach the correct answer by asking leading questions, providing hints, and explaining concepts.
-			If the student asks whether their answer is correct, you should not say 'yes' or 'no', but instead guide them to evaluate
+	const role = `You are SensAI, an AI assistant that helps students who are struggling on a quiz question.
+			You NEVER provide the answer, but instead guide the student to reach the correct answer
+			by asking leading questions, providing hints, and explaining concepts.
+			If the student asks whether an answer is correct, you should not say 'yes' or 'no', but instead guide them to evaluate
 			their own answer. Be encouraging and patient, as the student may be frustrated.
-			Your responses shouldn't be too long (max 50 words).
 			The quiz the student is currently working on is titled: ${quizTitle}. Here is the instructor's prompt for this quiz
 			(if this is empty, you can ignore it): ${quizPrompt}
 			This is the question the student is currently working on: ${questionText}. The correct answer is: ${correctAns}
@@ -42,7 +41,11 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 			Here is the chat history between you and the student so far (if empty, you can ignore it): ${chatHistory}`;
 	const prompt = `Here is the student's latest message, which you need to respond to: "${studentMessage}" 
 			| Check if the student made any mistakes in their message, gently correct them if needed.
-			Please provide your answer as plain text only, do not use any markdown formatting characters like asterisks, # symbols, or dollar signs ($).`;
+			Based on the chat history, if it seems like the student is just guessing answers, guide them to think more carefully about the question.
+			Please provide your answer as plain text only, do not use any markdown formatting characters like asterisks, # symbols, or dollar signs ($).
+			If they are asking whether a particular answer is correct, do NOT tell them if it is right or wrong.
+			Instead, guide them to evaluate their own answer. Even if they reach the correct answer, do not say 'you got it'
+			or 'correct', but instead encourage them to submit their answer for grading. Keep your response concise (max 50 words).`;
 	const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
 	const ai = new GoogleGenAI({apiKey: apiKey});
 	
@@ -64,23 +67,25 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 /** getMistake
  * Determines the mistake the student made for a particular question based on their answer and chat history.
  * @param {int} questionId
- * @param {string} givenAnswer
+ * @param {string} givenAns
  * @param {int} selfConfidence
  * @param {string} chatHistory
  * @param {int} userId
  */
-async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="", userId){
+async function getMistake(questionId, givenAns, selfConfidence, chatHistory="", userId){
 	// This function is called only if the student answer was incorrect.
 	// Thus, if their selfConfidence is 0, we assume the student guessed the answer.
+	const mistakeTypes = await getMistakeTypes();
+	// If selfConfidence is 0, we directly return the MistakeId for "No Attempt or Guess"
+	// determine which mistake id corresponds to no attempt or guess
+	const noAttemptMistake = mistakeTypes.find(mistake => mistake.label.toLowerCase() === "no attempt or guess");
 	if(selfConfidence === 0){
-		// MistakeId 7 corresponds to No Attempt or Guess
-		return 7;
+			return noAttemptMistake ? noAttemptMistake.mistakeId : 1;
 	}
 	const {title: questionText, correctAns} = await getQuestionById(questionId);
 	if(!questionText || correctAns === null || correctAns === undefined){
 		throw new Error("Error retrieving question details.");
 	}
-	const mistakeTypes = await getMistakeTypes();
 	if(mistakeTypes === null){
 		throw new Error("Error retrieving mistake types.");
 	} else if(mistakeTypes.length === 0){
@@ -92,7 +97,7 @@ async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="
 		mistakeList += `(${mistake.mistakeId}) ${mistake.label}: ${mistake.description}\n`;
 	});
 	const prompt = `A student answered the following question incorrectly: ${questionText}.
-	The correct answer is: ${correctAns}. The student's answer was: ${givenAnswer}. And their self-reported confidence level was: ${selfConfidence} (0 - low, 1- medium, 2- high).
+	The correct answer is: ${correctAns}. The student's answer was: ${givenAns}. And their self-reported confidence level was: ${selfConfidence} (0 - low, 1- medium, 2- high).
 	Based on the self confidence, given answer, and the chat history between the AI assistant and student (if there is chat history), identify the main type of mistake the student made.
 	Chat History: ${chatHistory}
 	Here is the list of possible mistakes in (id) label: description format:
@@ -175,4 +180,80 @@ async function getQuizSummary(quizResult, userId){
 	return response.text;
 }
 
-module.exports = { getChatResponse, getMistake, getQuizSummary };
+/** getAnswerFeedback
+ * Generates immediate feedback for an incorrect answer, including mistake type and brief explanation.
+ * @param {int} userId
+ * @param {int} questionId
+ * @param {string} givenAns
+ * @param {int} selfConfidence
+ * @param {string} chatHistory
+ * @returns {Promise<{mistakeLabel: string, feedback: string}>}
+ */
+async function getAnswerFeedback(userId, questionId, givenAns, selfConfidence, chatHistory=""){
+	try {
+		const {title: questionText, correctAns} = await getQuestionById(questionId);
+		const mistakeTypes = await getMistakeTypes();
+		
+		if(!questionText || correctAns === null || correctAns === undefined){
+			throw new Error("Error retrieving question details.");
+		}
+
+		// Use existing getMistake function to identify the mistake type
+		const mistakeId = await getMistake(questionId, givenAns, selfConfidence, chatHistory, userId);
+		
+		// Get the mistake label
+		let mistakeLabel = "Unknown Mistake";
+		if(mistakeId){
+			const mistake = mistakeTypes.find(m => m.mistakeId === mistakeId);
+			if(mistake){
+				mistakeLabel = mistake.label;
+			}
+		}
+
+		// Generate brief feedback using Gemini
+		const role = `You are SensAI, an educational AI assistant providing brief, encouraging feedback to students 
+		who answered incorrectly. Your feedback should be very brief (1-2 sentences max), explain why their answer was wrong,
+		and encourage them to try again and ask questions. Be supportive and positive. 
+		Do not provide the correct answer or any hints. Only explain why their answer was incorrect.`;
+		
+		const prompt = `A student answered the following question incorrectly:
+		Question: ${questionText}
+		Correct Answer: ${correctAns}
+		Student's Answer: ${givenAns}
+		Mistake Type: ${mistakeLabel}
+		Chat History (if empty, ignore): ${chatHistory}
+		
+		Provide VERY brief feedback (1-2 sentences) explaining what type of mistake they made and why their answer was incorrect.
+		Be supportive and encouraging. Do not reveal the correct answer.
+		Format: Plain text only, no markdown formatting.`;
+		
+		const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
+		const ai = new GoogleGenAI({apiKey: apiKey});
+		
+		const response = await ai.models.generateContent({
+			model: "gemini-2.5-flash",
+			config: {
+				thinkingConfig: {
+					thinkingBudget: 0,
+				},
+				systemInstruction: role,
+				maxOutputTokens: 100,
+			},
+			contents: prompt
+		});
+		
+		const feedback = response.text;
+		return { mistakeLabel, feedback };
+		
+	} catch (error) {
+		console.error("Error generating answer feedback:", error);
+		// Return default feedback if generation fails
+		return {
+			mistakeLabel: "Unknown Mistake",
+			feedback: `Your answer was incorrect. Please review the question and try again using the reset button.
+			 If you're feeling unsure or stuck, ask for help using the chat!`
+		};
+	}
+}
+
+module.exports = { getChatResponse, getMistake, getQuizSummary, getAnswerFeedback };

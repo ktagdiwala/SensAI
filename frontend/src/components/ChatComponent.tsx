@@ -24,10 +24,11 @@ type ChatComponentProps = {
     initialMessages?: Message[];
     isOpen?: boolean;
     onMessageCountChange?: (count: number) => void;
+    chatDisabled?: boolean;
 };
 
 
-export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions, onMessagesChange, initialMessages, isOpen, onMessageCountChange }: ChatComponentProps) {
+export default function ChatComponent({ onClose, quizId, questionId, quizTitle: quizTitleProp, questionNumber, questionText, questionOptions, onMessagesChange, initialMessages, isOpen, onMessageCountChange, chatDisabled = false }: ChatComponentProps) {
     const [messages, setMessages] = useState<Message[]>(initialMessages || []);
     const [input, setInput] = useState("");
     const [sending, setSending] = useState(false);
@@ -47,6 +48,31 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
             }, 150);
         }
     }, [initialMessages]);
+
+    // Handle chat disabled state
+    useEffect(() => {
+        if (chatDisabled) {
+            // Add system message when chat is disabled
+            const systemMessage: Message = {
+                id: `system-${Date.now()}`,
+                role: "ai",
+                content: "Click the reset button to start a new conversation with SensAI",
+            };
+            setMessages((prev) => {
+                // Only add if not already present
+                if (prev.some(m => m.content === systemMessage.content)) {
+                    return prev;
+                }
+                return [...prev, systemMessage];
+            });
+        } else {
+            // Remove system message when chat is enabled (on reset)
+            setMessages((prev) =>
+                prev.filter(m => m.content !== "Click the reset button to start a new conversation with SensAI")
+            );
+            setInput("");
+        }
+    }, [chatDisabled]);
 
     // Fetch quiz title only if not provided as prop
     useEffect(() => {
@@ -97,7 +123,7 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
     }, [isOpen]);
 
     const sendMessage = async () => {
-        if (!input.trim() || sending) return;
+        if (!input.trim() || sending || chatDisabled) return;
 
         const trimmed = input.trim();
         const timestamp = Date.now().toString();
@@ -292,7 +318,7 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
                     <div className="flex items-center justify-between gap-4 px-6 py-4">
                         <div className="flex items-center gap-2">
                             <img src={MainIcon} alt="SensAi logo" className="w-6 h-6" />
-                            <p className="text-sm font-semibold text-gray-900">SensAi</p>
+                            <p className="text-sm font-semibold text-gray-900">SensAI</p>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -361,8 +387,11 @@ export default function ChatComponent({ onClose, quizId, questionId, quizTitle: 
                             <button
                                 type="button"
                                 onClick={sendMessage}
+                                disabled={chatDisabled}
                                 aria-label="Send message"
-                                className="absolute inset-y-0 right-2 my-auto flex h-8 w-8 items-center justify-center rounded-full transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-chat-gold"
+                                className={`absolute inset-y-0 right-2 my-auto flex h-8 w-8 items-center justify-center rounded-full transition focus:outline-none focus:ring-2 focus:ring-chat-gold ${
+                                    chatDisabled ? "opacity-50 cursor-not-allowed" : "hover:scale-105"
+                                }`}
                             >
                                 <img
                                     src="/arrow-right-circle-Icon.svg"

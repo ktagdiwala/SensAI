@@ -7,7 +7,7 @@ const {getStudents, recordQuestionAttempt,
 	getAttemptsByStudentAndQuestion, getAttemptsByStudentAndQuiz,
 	getStudentQuizAttempts, getStudentQuestionAttemptsForQuiz,
 	getPreviousQuizAttempts} = require('../utils/attemptUtils');
-const {getQuizSummary} = require('../utils/geminiUtils');
+const {getQuizSummary, getAnswerFeedback} = require('../utils/geminiUtils');
 
 // === Helper Functions ===
 
@@ -52,7 +52,23 @@ router.post('/submit', verifySessionStudent, async (req, res) => {
 			return res.status(400).json({message: 'Failed to record question attempt. Please check your input parameters.'});
 		}
 		const { isCorrect } = result;
-		return res.status(201).json({message: 'Question attempt recorded.', isCorrect});
+		
+		// If answer is incorrect, generate feedback with mistake type
+		let feedbackData = null;
+		if(isCorrect === 0){
+			try {
+				feedbackData = await getAnswerFeedback(userId, questionId, givenAns, selfConfidence, chatHistory);
+			} catch (feedbackError) {
+				console.error('Error generating answer feedback:', feedbackError);
+				// Continue without feedback if generation fails
+			}
+		}
+		
+		return res.status(201).json({
+			message: 'Question attempt recorded.', 
+			isCorrect,
+			feedbackData
+		});
 	}catch(error){
 		console.error('Error recording question attempt:', error);
 		return res.status(500).json({message: 'Error recording question attempt.'});
