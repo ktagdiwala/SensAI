@@ -64,12 +64,12 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 /** getMistake
  * Determines the mistake the student made for a particular question based on their answer and chat history.
  * @param {int} questionId
- * @param {string} givenAnswer
+ * @param {string} givenAns
  * @param {int} selfConfidence
  * @param {string} chatHistory
  * @param {int} userId
  */
-async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="", userId){
+async function getMistake(questionId, givenAns, selfConfidence, chatHistory="", userId){
 	// This function is called only if the student answer was incorrect.
 	// Thus, if their selfConfidence is 0, we assume the student guessed the answer.
 	const mistakeTypes = await getMistakeTypes();
@@ -94,7 +94,7 @@ async function getMistake(questionId, givenAnswer, selfConfidence, chatHistory="
 		mistakeList += `(${mistake.mistakeId}) ${mistake.label}: ${mistake.description}\n`;
 	});
 	const prompt = `A student answered the following question incorrectly: ${questionText}.
-	The correct answer is: ${correctAns}. The student's answer was: ${givenAnswer}. And their self-reported confidence level was: ${selfConfidence} (0 - low, 1- medium, 2- high).
+	The correct answer is: ${correctAns}. The student's answer was: ${givenAns}. And their self-reported confidence level was: ${selfConfidence} (0 - low, 1- medium, 2- high).
 	Based on the self confidence, given answer, and the chat history between the AI assistant and student (if there is chat history), identify the main type of mistake the student made.
 	Chat History: ${chatHistory}
 	Here is the list of possible mistakes in (id) label: description format:
@@ -177,4 +177,80 @@ async function getQuizSummary(quizResult, userId){
 	return response.text;
 }
 
-module.exports = { getChatResponse, getMistake, getQuizSummary };
+/** getAnswerFeedback
+ * Generates immediate feedback for an incorrect answer, including mistake type and brief explanation.
+ * @param {int} userId
+ * @param {int} questionId
+ * @param {string} givenAns
+ * @param {int} selfConfidence
+ * @param {string} chatHistory
+ * @returns {Promise<{mistakeLabel: string, feedback: string}>}
+ */
+async function getAnswerFeedback(userId, questionId, givenAns, selfConfidence, chatHistory=""){
+	try {
+		const {title: questionText, correctAns} = await getQuestionById(questionId);
+		const mistakeTypes = await getMistakeTypes();
+		
+		if(!questionText || correctAns === null || correctAns === undefined){
+			throw new Error("Error retrieving question details.");
+		}
+
+		// Use existing getMistake function to identify the mistake type
+		const mistakeId = await getMistake(questionId, givenAns, selfConfidence, chatHistory, userId);
+		
+		// Get the mistake label
+		let mistakeLabel = "Unknown Mistake";
+		if(mistakeId){
+			const mistake = mistakeTypes.find(m => m.mistakeId === mistakeId);
+			if(mistake){
+				mistakeLabel = mistake.label;
+			}
+		}
+
+		// Generate brief feedback using Gemini
+		const role = `You are SensAI, an educational AI assistant providing brief, encouraging feedback to students 
+		who answered incorrectly. Your feedback should be very brief (1-2 sentences max), explain why their answer was wrong,
+		and encourage them to try again and ask questions. Be supportive and positive. 
+		Do not provide the correct answer or any hints. Only explain why their answer was incorrect.`;
+		
+		const prompt = `A student answered the following question incorrectly:
+		Question: ${questionText}
+		Correct Answer: ${correctAns}
+		Student's Answer: ${givenAns}
+		Mistake Type: ${mistakeLabel}
+		Chat History (if empty, ignore): ${chatHistory}
+		
+		Provide VERY brief feedback (1-2 sentences) explaining what type of mistake they made and why their answer was incorrect.
+		Be supportive and encouraging. Do not reveal the correct answer.
+		Format: Plain text only, no markdown formatting.`;
+		
+		const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
+		const ai = new GoogleGenAI({apiKey: apiKey});
+		
+		const response = await ai.models.generateContent({
+			model: "gemini-2.5-flash",
+			config: {
+				thinkingConfig: {
+					thinkingBudget: 0,
+				},
+				systemInstruction: role,
+				maxOutputTokens: 100,
+			},
+			contents: prompt
+		});
+		
+		const feedback = response.text;
+		return { mistakeLabel, feedback };
+		
+	} catch (error) {
+		console.error("Error generating answer feedback:", error);
+		// Return default feedback if generation fails
+		return {
+			mistakeLabel: "Unknown Mistake",
+			feedback: `Your answer was incorrect. Please review the question and try again using the reset button.
+			 If you're feeling unsure or stuck, ask for help using the chat!`
+		};
+	}
+}
+
+module.exports = { getChatResponse, getMistake, getQuizSummary, getAnswerFeedback };

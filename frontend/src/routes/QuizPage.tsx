@@ -434,10 +434,18 @@ export default function QuizPage() {
             }
 
             const data = await res.json();
-            return {
+            const feedback: AnswerFeedback = {
                 correct: !!data?.isCorrect,
                 explanation: data?.message,
             };
+
+            // Add mistake feedback if answer is incorrect
+            if (!feedback.correct && data?.feedbackData) {
+                feedback.mistakeLabel = data.feedbackData.mistakeLabel;
+                feedback.mistakeFeedback = data.feedbackData.feedback;
+            }
+
+            return feedback;
         } catch (err) {
             console.error("Answer validation failed", err);
             return {

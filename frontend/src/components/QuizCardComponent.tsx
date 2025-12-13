@@ -13,6 +13,8 @@ export type QuestionData = {
 export type AnswerFeedback = {
     correct: boolean;
     explanation?: string;
+    mistakeLabel?: string;
+    mistakeFeedback?: string;
 };
 
 type QuestionCardProps = {
@@ -76,6 +78,13 @@ export default function QuestionCard({
     useEffect(() => {
         setFeedback(null);
     }, [data.id]);
+
+    // Auto-open chat if answer is incorrect
+    useEffect(() => {
+        if (feedback && !feedback.correct && !isChatOpen) {
+            setIsChatOpen(true);
+        }
+    }, [feedback, isChatOpen]);
 
     async function onCheckAnswer() {
         if (!selected || selfConfidence === null) return;
@@ -198,7 +207,17 @@ export default function QuestionCard({
                     {feedback && (
                         <div className="mt-3 font-semibold">
                             {feedback.correct ? "✅ Correct!" : "❌ Incorrect."}
-                            {feedback.explanation && (
+                            {feedback.mistakeLabel && (
+                                <div className="mt-2 text-sm font-semibold text-blue-700 bg-blue-50 p-2 rounded">
+                                    Mistake Type: {feedback.mistakeLabel}
+                                </div>
+                            )}
+                            {feedback.mistakeFeedback && (
+                                <div className="mt-2 text-sm font-normal opacity-90 text-gray-700 bg-yellow-50 p-2 rounded">
+                                    {feedback.mistakeFeedback}
+                                </div>
+                            )}
+                            {feedback.explanation && !feedback.mistakeFeedback && (
                                 <div className="mt-1 font-normal opacity-90 text-gray-700">
                                     {feedback.explanation}
                                 </div>
