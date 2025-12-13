@@ -372,11 +372,14 @@ async function getPreviousQuizAttempts(userId, quizId){
 			// ignore and leave as 0 if not found
 		}
 
-		// Get all unique attempt datetimes for this student-quiz pair
+		// Get all unique attempt datetimes for this student-quiz pair, 
+		// but only include datetimes where there are 2+ records (full quiz submission, not individual check-answer)
 		const attemptsQuery = `
-			SELECT DISTINCT dateTime 
+			SELECT dateTime, COUNT(*) AS recordCount
 			FROM question_attempt 
 			WHERE userId = ? AND quizId = ? 
+			GROUP BY dateTime
+			HAVING COUNT(*) >= 2
 			ORDER BY dateTime DESC
 		`;
 		const [attempts] = await pool.query(attemptsQuery, [userId, quizId]);
