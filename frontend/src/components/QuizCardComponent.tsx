@@ -13,6 +13,8 @@ export type QuestionData = {
 export type AnswerFeedback = {
     correct: boolean;
     explanation?: string;
+    mistakeLabel?: string;
+    mistakeFeedback?: string;
 };
 
 type QuestionCardProps = {
@@ -77,6 +79,13 @@ export default function QuestionCard({
         setFeedback(null);
     }, [data.id]);
 
+    // Auto-open chat if answer is incorrect
+    useEffect(() => {
+        if (feedback && !feedback.correct && !isChatOpen) {
+            setIsChatOpen(true);
+        }
+    }, [feedback, isChatOpen]);
+
     async function onCheckAnswer() {
         if (!selected || selfConfidence === null) return;
         setSubmitting(true);
@@ -120,17 +129,9 @@ export default function QuestionCard({
                             Question {displayNumber ?? data.id}
                         </h2>
                         
-                        <div className="flex gap-x-3">
-                            <img
-                                src="/message-square.svg"
-                                alt="Open chat"
-                                style={{ cursor: "pointer", width: 24, height: 24, verticalAlign: "middle" }}
-                                onClick={() => setIsChatOpen((v) => !v)}
-                            />
-                            {data.points != null && (
-                                <div className="text-sm text-gray-700 font-bold">{data.points} pts</div>
-                            )}
-                        </div>
+                        {data.points != null && (
+                            <div className="text-sm text-gray-700 font-bold">{data.points} pts</div>
+                        )}
                     </div>
 
                     {/**Description */}
@@ -181,6 +182,18 @@ export default function QuestionCard({
                             {submitting ? "Checking…" : "Check Answer"}
                         </button>
 
+                        <button
+                            onClick={() => setIsChatOpen((v) => !v)}
+                            disabled={forceDisabled}
+                            className={`px-6 py-3 rounded-sm font-semibold text-white ${
+                                forceDisabled
+                                    ? "bg-gray-400 cursor-not-allowed"
+                                    : "bg-[#34A3C1] hover:opacity-90 cursor-pointer"
+                            } border-none`}
+                        >
+                            Ask SensAI
+                        </button>
+
                         {hasCheckedAnswer && (
                             <button
                                 type="button"
@@ -198,7 +211,17 @@ export default function QuestionCard({
                     {feedback && (
                         <div className="mt-3 font-semibold">
                             {feedback.correct ? "✅ Correct!" : "❌ Incorrect."}
-                            {feedback.explanation && (
+                            {feedback.mistakeLabel && (
+                                <div className="mt-2 text-sm font-semibold text-blue-700 bg-blue-50 p-2 rounded">
+                                    Mistake Type: {feedback.mistakeLabel}
+                                </div>
+                            )}
+                            {feedback.mistakeFeedback && (
+                                <div className="mt-2 text-sm font-normal opacity-90 text-gray-700 bg-yellow-50 p-2 rounded">
+                                    {feedback.mistakeFeedback}
+                                </div>
+                            )}
+                            {feedback.explanation && !feedback.mistakeFeedback && (
                                 <div className="mt-1 font-normal opacity-90 text-gray-700">
                                     {feedback.explanation}
                                 </div>
@@ -232,6 +255,7 @@ export default function QuestionCard({
                     initialMessages={initialChatMessages}
                     isOpen={isChatOpen}
                     onMessageCountChange={onMessageCountChange}
+                    chatDisabled={finalResult === null && feedback !== null && !feedback.correct}
                 />
             </div>
         </div>
