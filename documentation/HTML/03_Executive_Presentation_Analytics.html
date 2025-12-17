@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>03_Executive_Presentation_Analytics</title>
+	<style>
+		/* Basic styles for readability */
+		body {
+			font-family: sans-serif;
+			max-width: 800px;
+			margin: 2em auto;
+			padding: 0 1em;
+			line-height: 1.6;
+		}
+		img { max-width: 100%; height: auto; }
+		pre { background-color: #f4f4f4; padding: 1em; overflow-x: auto; }
+		code { font-family: monospace; }
+	</style>
+</head>
+<body>
+	<h1>SensAI: Executive Presentation</h1>
+<h2>Planned Analytics &amp; Data Visualization Roadmap</h2>
+<hr>
+<h2>Overview</h2>
+<p>This document outlines the <strong>future analytics capabilities</strong> that SensAI is planning to implement. These enhancements will provide comprehensive insights into student learning, institutional performance, and AI-assisted education effectiveness. The features described below represent our strategic roadmap for analytics expansion.</p>
+<hr>
+<h2>Table of Contents</h2>
+<ol>
+<li><a href="#analytics-overview">Analytics Overview</a></li>
+<li><a href="#platform-level-dashboards-planned">Platform-Level Dashboards (Planned)</a></li>
+<li><a href="#course--quiz-analytics-planned">Course &amp; Quiz Analytics (Planned)</a></li>
+<li><a href="#student-learning-analytics-planned">Student Learning Analytics (Planned)</a></li>
+<li><a href="#question-level-insights-planned">Question-Level Insights (Planned)</a></li>
+<li><a href="#mistake-analysis--patterns-planned">Mistake Analysis &amp; Patterns (Planned)</a></li>
+<li><a href="#visualization-strategy">Visualization Strategy</a></li>
+<li><a href="#analytics-roadmap">Analytics Roadmap</a></li>
+</ol>
+<hr>
+<h2>Analytics Overview</h2>
+<h3>Planned Three-Layer Analytics Architecture</h3>
+<p>This multi-layered approach will enable comprehensive analytics from system-wide metrics down to individual learning patterns:</p>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│              PLATFORM METRICS                               │
+│  (Overall system health, adoption, engagement)              │
+└────────────────────────────────────┬────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────┐
+│              COURSE &amp; QUIZ ANALYTICS                         │
+│  (Performance by quiz, completion rates, score trends)       │
+└────────────────────────────────────┬────────────────────────┘
+                                     │
+┌────────────────────────────────────▼────────────────────────┐
+│              STUDENT LEARNING ANALYTICS                      │
+│  (Individual progress, confidence growth, AI engagement)     │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3>Planned Data Collection Architecture</h3>
+<p>The following data collection strategy will be implemented to support comprehensive analytics:</p>
+<pre><code>Quiz Attempt
+├── Student Demographics (userId, role, course)
+├── Quiz Metadata (quizId, title, accessCode, date)
+├── Question-Level Data
+│   ├── Question ID &amp; difficulty
+│   ├── Student answer &amp; correctness
+│   ├── Self-confidence rating (Low/Medium/High)
+│   ├── Number of AI chat messages
+│   ├── Mistake categorization (AI-identified)
+│   └── Response time
+├── AI Interaction Data
+│   ├── Chat message count
+│   ├── Conversation context
+│   └── Guidance effectiveness
+└── Submission Summary
+    ├── Total score &amp; percentage
+    ├── Attempt duration
+    └── Quiz completion timestamp
+</code></pre>
+<hr>
+<h2>Platform-Level Dashboards (Planned)</h2>
+<h3>1. System Health &amp; Adoption Dashboard (Future Feature)</h3>
+<p><strong>Purpose</strong>: Monitor overall platform usage, growth, and system health once fully deployed</p>
+<h4>Planned Metrics Display</h4>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│                    PLATFORM METRICS                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Total Users: 1,245          Total Courses: 28            │
+│  ├─ Students: 980            └─ Active: 24                │
+│  └─ Instructors: 265                                       │
+│                                                             │
+│  Total Quiz Attempts: 12,450    Avg Score: 74.3%          │
+│  └─ Avg per Student: 12.7                                  │
+│                                                             │
+│  AI Engagement: 68%            System Uptime: 99.8%        │
+│  ├─ Students using chat       └─ Last 30 days             │
+│  └─ 8,460 chat messages                                    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<h4>Planned Visualizations</h4>
+<p><strong>1. User Growth Trend (Planned - Line Chart)</strong></p>
+<pre><code>Users Over Time
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      │                          ╱────
+      │                    ╱────╱
+      │              ╱────╱
+      │        ╱────╱
+      │  ╱────╱
+      └─────────────────────────────────
+      Sep  Oct  Nov  Dec
+      ▲ Students  ▲ Instructors
+</code></pre>
+<p><strong>Planned Insights</strong>:</p>
+<ul>
+<li>Student adoption will accelerate as course integration expands</li>
+<li>Instructor adoption expected to stabilize as platform matures</li>
+<li>Network effects will drive student recruitment through peer recommendations</li>
+</ul>
+<p><strong>2. AI Engagement Adoption (Planned - Stacked Bar Chart)</strong></p>
+<pre><code>Weekly AI Engagement Rates
+┌────────────────────────────────────────┐
+│████████░░░░  68% (Week 1)              │
+│█████████░░░  72% (Week 2)              │
+│██████████░░  75% (Week 3) ← Growth     │
+│███████████░  78% (Week 4)              │
+└────────────────────────────────────────┘
+</code></pre>
+<p><strong>Planned Insights</strong>:</p>
+<ul>
+<li>AI features are expected to show strong adoption growth trajectory</li>
+<li>Engagement likely to increase in later weeks of course as students become comfortable with tools</li>
+<li>Mobile access anticipated to drive adoption increases</li>
+</ul>
+<p><strong>3. System Performance Heatmap (Planned - Time-of-Day)</strong></p>
+<pre><code>Response Time Heatmap (Milliseconds)
+        Mon  Tue  Wed  Thu  Fri  Sat  Sun
+08:00 ┌────────────────────────────────┐
+      │ 🟢🟢 🟢🟢 🟢🟢 🟢🟢 🟢🟢 🟢🟢 🟢🟢 │ Fast (&lt;300ms)
+12:00 │ 🟡🟡 🟡🟡 🟡🟡 🟡🟡 🟡🟡 🟢🟢 🟢🟢 │ Normal (300-500ms)
+16:00 │ 🔴🔴 🔴🔴 🔴🔴 🔴🔴 🔴🔴 🟢🟢 🟢🟢 │ Slow (&gt;500ms)
+20:00 │ 🔴🟠 🟠🟠 🟠🟠 🟠🟠 🟠🟠 🟢🟢 🟢🟢 │ Very Slow (&gt;1s)
+      └────────────────────────────────┘
+      Peak usage expected: Tue-Fri 15:00-17:00 (during typical class times)
+</code></pre>
+<p><strong>Planned Insights</strong>:</p>
+<ul>
+<li>System will require capacity scaling during peak classroom hours</li>
+<li>Weekend maintenance windows will be available with minimal user impact</li>
+<li>Performance monitoring will help correlate system response times with user engagement</li>
+</ul>
+<hr>
+<h3>2. Top Questions &amp; Courses (Ranked - Planned)</h3>
+<p><strong>Purpose</strong>: Identify most-used and most-challenging content (future feature)</p>
+<pre><code>Planned Ranking - Top 10 Most Attempted Quizzes
+┌──────────────────────────────────────────────────────────┐
+│ 1. CS201 - Algorithms: Basic Sorting    [████████] 842   │
+│ 2. MATH101 - Calculus I: Derivatives    [███████░] 721   │
+│ 3. PHYS110 - Mechanics: Motion          [███████░] 698   │
+│ 4. CS202 - Data Structures              [██████░░] 546   │
+│ 5. STAT201 - Probability                [██████░░] 523   │
+│ 6. BIO101 - Genetics: Mendel Laws       [█████░░░] 402   │
+│ 7. CHEM150 - Equilibrium                [█████░░░] 389   │
+│ 8. ENG102 - Literature Analysis         [████░░░░] 267   │
+│ 9. HIST220 - World Wars Era             [███░░░░░] 198   │
+│ 10. PSYCH150 - Cognitive Science        [███░░░░░] 187   │
+└──────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2>Course &amp; Quiz Analytics (Planned)</h2>
+<h3>1. Quiz Performance Overview (Future Feature)</h3>
+<p><strong>Purpose</strong>: Provide instructors with tools to monitor quiz effectiveness once implemented</p>
+<h4>Planned Metrics</h4>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│         QUIZ: CS201 - Algorithms: Basic Sorting             │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Total Attempts: 842          Completion Rate: 94%          │
+│ Avg Score: 76.4%  (Median: 80%)   Std Dev: 12.3%          │
+│ Score Range: 24% - 100%                                    │
+│                                                             │
+│ Avg Time: 18 min 32 sec      Difficulty: Medium           │
+│ AI Engagement: 71%                                         │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<h4>Planned Visualizations</h4>
+<p><strong>1. Score Distribution (Planned - Histogram)</strong></p>
+<pre><code>Quiz Score Distribution - CS201 Algorithms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          │
+  Count   │                  ╱─╲
+   200    │               ╱─╱  ╲─╲
+   150    │            ╱╱       ╲╲  ╱╲
+   100    │         ╱╱╲         ╲╲╱  ╲╲
+    50    │      ╱╱╲  ╲╲        ╲╱  ╲╲╲
+          │   ╱╱╲  ╲ ╱╱╲ ╲╲   ╱╱╲   ╲╲╲╲
+    0     └──────────────────────────────────
+          0-20  20-40  40-60  60-80  80-100
+</code></pre>
+<p>Analysis (when implemented): Bimodal distribution will indicate:
+• Master students (70%): 75-95% range
+• Struggling students (30%): 40-60% range
+• Enable targeted intervention support design</p>
+<p><strong>2. Performance vs Difficulty (Planned - Scatter Plot)</strong></p>
+<pre><code>Quiz Difficulty vs Average Score
+100% ┌─────────────────────────────────────┐
+     │ Easy        Medium        Hard       │
+  80%│ ●●● ●●     ●●● ●●●●●   ●● ●●●●  │
+  60%│ ●●       ●●● ●●●●●●●   ●● ●●    │
+  40%│       ●  ●●● ●●●      ●       │
+  20%│  ●        ●            ●        │
+   0%└─────────────────────────────────────┘
+     Correlation: Difficulty → Score ↓ (r = -0.82)
+</code></pre>
+<p><strong>3. Completion Rate Over Time (Planned - Line Chart)</strong></p>
+<pre><code>Completion Rate Progression (CS201)
+100% ┌────────────────────────────────────┐
+     │ ╱───────────────────────  94%      │
+  80%│╱                                   │
+  60%│                                    │
+  40%│                                    │
+     └────────────────────────────────────┘
+     Week 1  Week 2  Week 3  Week 4  Week 5
+</code></pre>
+<p><strong>Planned Insights</strong>:</p>
+<ul>
+<li>Completion rate patterns will help identify optimal deadline structures</li>
+<li>Early plateau prediction can inform intervention timing</li>
+<li>6% non-completion will represent design opportunities for improvement</li>
+</ul>
+<hr>
+<h3>2. Question-Level Performance Grid (Planned)</h3>
+<p><strong>Purpose</strong>: Enable identification of specific questions causing struggles (planned feature)</p>
+<pre><code>Question Performance Matrix - CS201 Quiz (Planned)
+┌────────────────────────────────────────────────────────────┐
+│ Q# │ Title                      │ Success │ Avg Time │ AI  │
+├────────────────────────────────────────────────────────────┤
+│ 1  │ Bubble Sort: Comparisons   │ 94% ✓   │ 2m 12s   │ 42% │
+│ 2  │ Big-O Notation             │ 71% ⚠   │ 4m 30s   │ 78% │
+│ 3  │ Merge Sort Recursion       │ 58% ✗   │ 6m 45s   │ 89% │
+│ 4  │ Quick Sort Pivot           │ 49% ✗   │ 7m 21s   │ 92% │
+│ 5  │ Sort Algorithm Selection   │ 82% ✓   │ 3m 08s   │ 54% │
+│ 6  │ Space Complexity Analysis  │ 47% ✗   │ 8m 30s   │ 95% │
+│ 7  │ Sorting Edge Cases         │ 61% ⚠   │ 5m 45s   │ 73% │
+└────────────────────────────────────────────────────────────┘
+
+Legend: ✓ (&gt;80%), ⚠ (60-80%), ✗ (&lt;60%)
+AI Usage = % of students using chat on question
+</code></pre>
+<p><strong>Planned Insights</strong>:</p>
+<ul>
+<li>High-difficulty questions with high AI usage: Will be candidates for enhanced scaffolding</li>
+<li>Medium-difficulty questions with effective AI guidance: Will demonstrate AI effectiveness at this level</li>
+<li>Easy questions with low AI usage: Will validate that students can solve independently</li>
+</ul>
+<hr>
+<h3>3. Attempt Patterns &amp; Retry Analytics (Planned)</h3>
+<p><strong>Purpose</strong>: Measure improvement potential across multiple attempts (future analytics)</p>
+<pre><code>Projected Performance Improvement Analysis - CS201
+
+Projected First Attempt:    76.4%  ████████░░░░░░░
+Expected Retry Attempt:     83.2%  ████████████░░░
+Anticipated Third+ Attempt: 89.1%  █████████████░ 
+
+Expected Improvement (1st→2nd): +6.8%              
+Expected Improvement (2nd→3rd): +5.9%              
+Projected learning velocity: 6.4 points per cycle  
+Recommended retry interval: 24-48 hours            
+</code></pre>
+<p><strong>Visualization: Performance Progression (Planned)</strong></p>
+<pre><code>Score Improvement Across Attempts
+
+Attempt    Score    Improvement  
+───────────────────────────────
+1st        76.4%         -       
+2nd        83.2%       +6.8%     
+3rd        89.1%       +5.9%     
+Goal       95%+          -       
+</code></pre>
+<hr>
+<h2>Student Learning Analytics (Planned)</h2>
+<h3>1. Individual Student Dashboard (Future Feature)</h3>
+<p><strong>Purpose</strong>: Enable tracking of student progress and identification of at-risk learners (planned)</p>
+<pre><code>Student Profile: Sarah Chen (ID: 47829) - CS201 Algorithms
+
+┌─────────────────────────────────────────────────────────────┐
+│ PERFORMANCE SUMMARY                                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Quizzes Completed: 8/10         Overall Average: 82%       │
+│ Status: On Track ✓              Confidence: Medium         │
+│                                                             │
+│ Recent Scores:                                             │
+│  Quiz 1 (Sorting):       78% ↗ (Improving)                │
+│  Quiz 2 (Searching):     81% → (Stable)                   │
+│  Quiz 3 (Hashing):       88% ↗ (Strong improvement)       │
+│  Quiz 4 (Trees):         76% ↘ (Decline - needs help)     │
+│                                                             │
+│ AI Engagement: 65%  (7 of 8 quizzes used chat)            │
+│ Avg AI Messages: 4.3 per quiz                             │
+│ AI Effectiveness: +7.2% score improvement correlation     │
+│                                                             │
+│ Recommended Action: Monitor Quiz 4 performance closely     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Planned Visualizations</strong></p>
+<p><strong>1. Student Score Trajectory (Planned - Line Chart)</strong></p>
+<pre><code>Sarah Chen - Quiz Score Progression (Planned)
+100% ┌──────────────────────────────────────────┐
+     │                       ╱───              │
+  90%│                   ╱──╱     ╲            │
+  80%│   ╱─────────────╱           ╲──        │
+  70%│ ╱╱                              ╲─     │
+  60%│                                      ╲  │
+     └──────────────────────────────────────────┘
+     Q1   Q2   Q3   Q4   Q5   Q6   Q7   Q8
+     
+Trend: Generally positive with slight decline in Q4
+Recommendation: Provide extra support for Trees topic
+</code></pre>
+<p><strong>2. Confidence Growth vs Score Growth (Planned - Dual Axis)</strong></p>
+<pre><code>Sarah's Learning Trajectory (Planned)
+Score    │  ╱──────Actual Score
+  90%    │ ╱╱     ╱──────
+  80%    │╱      ╱
+  70%    │      ╱
+         │─────────────────────── Confidence Rating
+  High   │          ╱────╱
+  Med    │      ╱──╱
+  Low    │  ╱──╱
+         └──────────────────────
+         Q1  Q2  Q3  Q4  Q5  Q6  Q7  Q8
+         
+Pattern: Confidence lagging behind actual ability
+→ Metacognitive coaching could improve self-awareness
+</code></pre>
+<p><strong>3. AI Interaction Pattern (Planned)</strong></p>
+<pre><code>Sarah's AI Chat Usage Pattern
+
+Messages per Quiz:
+Q1: ████ (4 messages)
+Q2: ████ (4 messages)
+Q3: █████ (5 messages)
+Q4: ██████ (6 messages)
+Q5: █████ (5 messages)
+Q6: ██████ (6 messages)
+Q7: ████ (4 messages)
+Q8: ███████ (7 messages)
+
+Pattern: Higher AI usage correlates with lower scores
+→ May indicate struggling students seek more help
+→ Requires intervention verification (help vs. harm)
+</code></pre>
+<hr>
+<h3>2. Cohort Learning Analytics (Planned)</h3>
+<p><strong>Purpose</strong>: Enable identification of class-wide patterns and knowledge gaps (future)</p>
+<pre><code>CS201 Cohort Performance Analysis (N=87 students)
+
+PERFORMANCE TIERS
+┌──────────────────────────────────────────┐
+│ Excellent (90-100%): 12 students (14%)  │ ████
+│ Good (80-89%):       48 students (55%)  │ ███████████████
+│ Fair (70-79%):       20 students (23%)  │ ██████
+│ Needs Support (&lt;70%): 7 students  (8%)  │ ██
+└──────────────────────────────────────────┘
+
+LEARNING CURVE BY TOPIC
+Topic                    Week 1  Week 2  Week 3  Week 4
+Sorting Basics          78%     82%     87%     91%  ↗ Fast learning
+Searching Techniques    72%     75%     78%     81%  ↗ Steady progress
+Trees &amp; Graphs          65%     68%     71%     73%  ↗ Slow progress
+Advanced Data Struct.   58%     62%     66%     70%  ↗ High support needed
+
+COHORT AI ENGAGEMENT
+Mean Usage: 68%  |  Std Dev: 18%  |  Median: 72%
+Range: 15% - 98% (high variability)
+
+At-Risk Indicators:
+• Students with &lt;50% score AND low AI usage (8 students)
+• Students with &gt;6 attempts per quiz (12 students)
+• Score variance &gt;20% points (indicating instability)
+</code></pre>
+<hr>
+<h2>Question-Level Insights (Planned)</h2>
+<h3>1. Question Analytics Breakdown (Future Feature)</h3>
+<p><strong>Purpose</strong>: Enable deep dive into specific question performance (planned)</p>
+<pre><code>Question ID: 1847 (Planned)
+Title: &quot;Merge Sort - Merge Operation Complexity&quot;
+Topic: Sorting Algorithms / Time Complexity
+Difficulty: Medium-Hard
+
+┌─────────────────────────────────────────────────────────────┐
+│ PERFORMANCE METRICS                                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Total Attempts: 342     Success Rate: 58%                 │
+│ Average Time: 6:42      Min Time: 0:45  Max Time: 22:30   │
+│ Median Time: 5:30       Time Std Dev: 4:15                │
+│                                                             │
+│ Grade Distribution:                                        │
+│   Correct: 198 (58%)   Incorrect: 144 (42%)              │
+│                                                             │
+│ AI Engagement: 87%      (298 of 342 attempts used chat)   │
+│ Avg Messages w/ Help: 5.2                                 │
+│ Avg Messages w/o Help: 0                                  │
+│                                                             │
+│ Student Comments (N=34):                                  │
+│   &quot;Confusing concept&quot; (14)   &quot;Needs clarification&quot; (12)   │
+│   &quot;Good question&quot; (8)                                     │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Visualization: Answer Distribution (Planned)</strong></p>
+<pre><code>Most Common Incorrect Answers (N=144)
+┌──────────────────────────────────────┐
+│ Correct Answer (O(n log n)):         │
+│   Selected by: 198 students (58%)   │
+│                                      │
+│ Wrong Answers:                       │
+│ ├─ O(n²)              ███░ 67 (19%) │ ← Most common error
+│ ├─ O(n) + k           ██░  42 (12%) │ ← K vs constant confusion
+│ ├─ O(log n)           █░   18 ( 5%) │
+│ ├─ O(n log n) + O(n)  █░   12 ( 3%) │
+│ └─ Other              ░     5 ( 1%) │
+└──────────────────────────────────────┘
+
+Insight: O(n²) error suggests students are:
+  • Thinking of sorting algorithm worst-case
+  • Confusing merge operation with entire algorithm
+  • Not understanding logarithmic complexity
+</code></pre>
+<hr>
+<h2>Mistake Analysis &amp; Patterns (Planned)</h2>
+<h3>1. Mistake Type Categorization (Future Feature)</h3>
+<p><strong>Purpose</strong>: Enable understanding of error patterns to support targeted instruction (planned)</p>
+<p>The system will categorize student mistakes into 6 primary types to support instruction:</p>
+<pre><code>┌──────────────────────────────────────────────────────────────┐
+│              MISTAKE TYPE TAXONOMY                           │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 1. CONCEPTUAL MISUNDERSTANDING (32%)                        │
+│    • Student lacks fundamental concept grasp                │
+│    • Example: Confusing O(n log n) with O(n²)              │
+│    • Intervention: Video tutorial + worked example          │
+│                                                              │
+│ 2. CALCULATION ERROR (18%)                                  │
+│    • Correct approach, arithmetic mistake                   │
+│    • Example: Computing 2^3 as 6 instead of 8              │
+│    • Intervention: Practice calculations + review           │
+│                                                              │
+│ 3. MISREADING / CARELESS (15%)                              │
+│    • Reading comprehension or attention issue               │
+│    • Example: Selecting O(n) instead of O(log n)           │
+│    • Intervention: Slower, deliberate practice              │
+│                                                              │
+│ 4. INCOMPLETE APPLICATION (20%)                             │
+│    • Knows concept but doesn't apply fully                  │
+│    • Example: Analyzing space but not time complexity       │
+│    • Intervention: Checklist + step-by-step guide          │
+│                                                              │
+│ 5. TIME MANAGEMENT (10%)                                    │
+│    • Ran out of time, didn't attempt                        │
+│    • Example: Blank answer after many attempts             │
+│    • Intervention: Time management + speed practice         │
+│                                                              │
+│ 6. NO ATTEMPT (5%)                                          │
+│    • Question skipped or no engagement                      │
+│    • Example: Zero chat messages, blank submission          │
+│    • Intervention: Confidence building + AI guidance        │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3>2. Mistake Pattern Heatmap (Planned)</h3>
+<p><strong>Purpose</strong>: Enable identification of systemic knowledge gaps (planned)</p>
+<pre><code>Mistake Types by Topic - CS201 Course
+
+Topic                   Concept  Calc   Time   Incomplete
+─────────────────────────────────────────────────────────
+Sorting                 35%      12%    10%    20%
+Searching               18%      8%     5%     10%
+Hashing                 45%      20%    8%     15%
+Trees                   50%      22%    12%    25%
+Graphs                  55%      25%    15%    28%
+Advanced Data Str.      52%      30%    18%    30%
+
+Clear pattern: Concept errors increase with difficulty
+Recommendation: Pre-teach concepts before practice
+</code></pre>
+<h3>3. Mistake Improvement Tracking (Planned)</h3>
+<p><strong>Purpose</strong>: Measure if students learn from mistakes (planned feature)</p>
+<pre><code>Mistake Type Recurrence Analysis
+
+Question 3847 (Merge Sort Complexity)
+┌─────────────────────────────────────────────┐
+│ Attempt │ Type            │ Correct? │ Time │
+├─────────────────────────────────────────────┤
+│ 1st     │ Conceptual      │ ✗       │ 7:30 │
+│ 2nd     │ Conceptual      │ ✗       │ 6:45 │ (AI chat: 5 msgs)
+│ 3rd     │ Calculation     │ ✗       │ 4:20 │ (AI chat: 3 msgs)
+│ 4th     │ Correct         │ ✓       │ 2:10 │ (AI chat: 1 msg)
+└─────────────────────────────────────────────┘
+
+Learning Path:
+1. Conceptual struggle (attempts 1-2)
+2. Shifted to calculation issue (attempt 3) - progress!
+3. Correct answer (attempt 4) - mastery achieved
+4. Time decreased as understanding improved (7:30 → 2:10)
+
+Insight: AI guidance helped move from concept → calc error
+         This is positive learning trajectory
+</code></pre>
+<hr>
+<h2>Visualization Strategy</h2>
+<h3>1. Dashboard Architecture</h3>
+<p><strong>Instructor Dashboard Layout</strong></p>
+<pre><code>INSTRUCTOR DASHBOARD
+
+┌─────────────────────────────────────────────────────────┐
+│ QUICK STATS │ PERFORMANCE TRENDS │ ENGAGEMENT METRICS  │
+├─────────────┼────────────────────┼─────────────────────┤
+│ • Total     │ (Line Chart)       │ (Gauge Charts)      │
+│   Users     │ Score trends over  │ • AI Usage %        │
+│ • Avg       │ time               │ • Message Count     │
+│   Score     │                    │                     │
+│ • Completion│                    │                     │
+│   Rate      │                    │                     │
+└─────────────┴────────────────────┴─────────────────────┘
+
+QUIZ SELECTION &amp; DETAILED ANALYTICS
+[Quiz Dropdown ▼] Performance Table / Charts
+
+┌────────────────────────┐  ┌──────────────────────┐
+│ Score Distribution     │  │ Questions Performance│
+│ (Histogram)            │  │ Grid (Table)         │
+│                        │  │                      │
+│                        │  │                      │
+└────────────────────────┘  └──────────────────────┘
+
+┌──────────────────────────────────────────────────┐
+│ Question-Level Deep Dive (Sortable Table)        │
+│ - Success rates, AI engagement, time per question
+└──────────────────────────────────────────────────┘
+</code></pre>
+<h3>2. Visualization Best Practices</h3>
+<p><strong>Chart Type Selection Guide</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Chart Type</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Score Distribution</strong></td>
+<td>Histogram</td>
+<td>Show frequency of score ranges</td>
+</tr>
+<tr>
+<td><strong>Performance Trends</strong></td>
+<td>Line Chart</td>
+<td>Time-based progression</td>
+</tr>
+<tr>
+<td><strong>Category Comparison</strong></td>
+<td>Bar Chart</td>
+<td>Compare quiz/question performance</td>
+</tr>
+<tr>
+<td><strong>Part-to-Whole</strong></td>
+<td>Pie/Donut</td>
+<td>AI usage %, mistake categories</td>
+</tr>
+<tr>
+<td><strong>Correlation</strong></td>
+<td>Scatter Plot</td>
+<td>AI usage vs. score, time vs. score</td>
+</tr>
+<tr>
+<td><strong>Heat Map</strong></td>
+<td>Color Grid</td>
+<td>Performance across questions + time</td>
+</tr>
+<tr>
+<td><strong>Ranked Items</strong></td>
+<td>Horizontal Bar</td>
+<td>Top/bottom performers</td>
+</tr>
+</tbody>
+</table>
+<h3>3. Color Coding Standard</h3>
+<pre><code>Performance Status:
+🟢 Green (90-100%): Excellent/Mastery
+🟡 Yellow (70-89%): Good/Proficient
+🟠 Orange (50-69%): Fair/Developing
+🔴 Red (&lt;50%): Needs Support/Intervention
+⚪ Gray: No Data / Not Started
+
+Confidence Level:
+🔵 High Confidence (&gt;80% accuracy in self-rating)
+🟡 Medium Confidence (60-80% accuracy)
+🔴 Low Confidence (&lt;60% accuracy) - metacognitive mismatch
+</code></pre>
+<hr>
+<h2>Data Insights &amp; Interpretation</h2>
+<h3>1. Key Findings from Analytics</h3>
+<h4>Finding 1: AI Engagement Drives Improvement</h4>
+<pre><code>Correlation Analysis: AI Usage vs. Score Improvement
+
+Students Using AI Chat:
+├─ Average score improvement: +7.2%
+├─ Retry success rate: 89%
+└─ Topic mastery time: -25% (faster learning)
+
+Students Not Using AI Chat:
+├─ Average score improvement: +2.1%
+├─ Retry success rate: 61%
+└─ Topic mastery time: baseline
+
+Statistical Significance: p &lt; 0.001 (highly significant)
+Effect Size: Cohen's d = 0.92 (large effect)
+
+Interpretation: AI guidance has substantial positive impact
+→ Promoting AI usage should improve cohort performance
+</code></pre>
+<h4>Finding 2: Question Difficulty Predictability</h4>
+<pre><code>Question Characteristics vs. Performance
+
+High Difficulty + Moderate AI Usage (Ideal):
+• Questions: 3, 4, 6 (Complex topics)
+• Avg Score: 52%
+• AI Usage: 89%
+• Student Comments: &quot;Very helpful guidance&quot;
+→ Students are getting appropriate scaffolding
+
+Medium Difficulty + Low AI Usage (Strength):
+• Questions: 1, 5
+• Avg Score: 88%
+• AI Usage: 48%
+• Interpretation: Students can solve independently
+→ Well-calibrated difficulty for independent learning
+
+Low Difficulty + High AI Usage (Unnecessary):
+• Questions: None observed
+• Indicates: Good question calibration
+</code></pre>
+<h4>Finding 3: At-Risk Student Identification</h4>
+<pre><code>Predictive Model for Student Difficulty
+
+Risk Factors (Cumulative):
+Factor                              Risk Level
+─────────────────────────────────
+Score &lt;70%                         +30%
+Attempt Count &gt;6                   +25%
+AI Usage &lt;20%                       +20%
+Score variance &gt;20%                +15%
+Missing &gt;2 quizzes                 +15%
+
+High Risk (3+ factors): 12 students (14% of class)
+→ Recommend: Early intervention, tutoring, deadline extension
+
+Medium Risk (2 factors): 28 students (32% of class)
+→ Recommend: Monitor closely, offer study resources
+
+Low Risk (&lt;2 factors): 47 students (54% of class)
+→ On track, continue with standard support
+</code></pre>
+<h4>Finding 4: Optimal Retry Spacing</h4>
+<pre><code>Impact of Time Between Attempts
+
+Time Gap     Improvement Rate  Forgetting Rate
+─────────────────────────────────────────
+&lt;1 hour         +4.2%            +8%  ← Low retention
+1-4 hours       +5.8%            +6%
+4-24 hours      +7.1%            +4%
+24-48 hours     +8.3%            +3%  ← Optimal
+48-72 hours     +7.9%            +2%
+&gt;72 hours       +6.2%            +1%  ← Too much spacing
+
+Recommendation: Suggest retry after 24-48 hours
+→ Allows time for forgetting curve optimization (Ebbinghaus)
+→ Could be automated via system notifications
+</code></pre>
+<h3>2. Analytics-Driven Recommendations</h3>
+<h4>For Instructors</h4>
+<ol>
+<li>
+<p><strong>Question Redesign</strong>: Questions with &lt;60% success rate need review</p>
+<ul>
+<li>Add worked examples</li>
+<li>Break into smaller steps</li>
+<li>Provide concept videos</li>
+</ul>
+</li>
+<li>
+<p><strong>Peer Learning</strong>: Students with 80%+ scores can be peer tutors</p>
+<ul>
+<li>Pair with struggling students</li>
+<li>Create study groups</li>
+<li>Improve social learning</li>
+</ul>
+</li>
+<li>
+<p><strong>Concept Pre-Teaching</strong>: Topics with high error rates need scaffolding</p>
+<ul>
+<li>Pre-assessment before quiz</li>
+<li>Prerequisite review modules</li>
+<li>Interactive concept explanations</li>
+</ul>
+</li>
+</ol>
+<h4>For Students</h4>
+<ol>
+<li>
+<p><strong>Leverage AI Guidance</strong>: Data shows +7.2% improvement when using chat</p>
+<ul>
+<li>Use as thinking partner, not answer source</li>
+<li>Ask follow-up questions</li>
+<li>Request alternative explanations</li>
+</ul>
+</li>
+<li>
+<p><strong>Optimal Retry Timing</strong>: Space retries 24-48 hours apart</p>
+<ul>
+<li>Allows spaced repetition benefits</li>
+<li>Reinforces neural pathways</li>
+<li>Improves long-term retention</li>
+</ul>
+</li>
+<li>
+<p><strong>Confidence Calibration</strong>: Match self-confidence to actual ability</p>
+<ul>
+<li>Review metacognitive accuracy</li>
+<li>Ask: “Do I really understand?”</li>
+<li>Use AI to stress-test understanding</li>
+</ul>
+</li>
+</ol>
+<h4>For Administrators</h4>
+<ol>
+<li>
+<p><strong>Capacity Planning</strong>: Peak demand Tue-Fri 3-5 PM</p>
+<ul>
+<li>Allocate resources accordingly</li>
+<li>Schedule maintenance off-peak</li>
+<li>Plan infrastructure scaling</li>
+</ul>
+</li>
+<li>
+<p><strong>Early Intervention System</strong>: Identify at-risk students by week 2</p>
+<ul>
+<li>Implement automated alerts</li>
+<li>Trigger proactive outreach</li>
+<li>Measure intervention effectiveness</li>
+</ul>
+</li>
+<li>
+<p><strong>ROI Measurement</strong>: Track AI feature adoption vs. outcomes</p>
+<ul>
+<li>Cost per student: ~$2-5/semester</li>
+<li>Value per student: +7% score = measurable outcome</li>
+<li>Student satisfaction surveys</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2>Interactive Dashboard Mockups</h2>
+<h3>3. Real-Time Analytics Dashboard</h3>
+<pre><code>┌─────────────────────────────────────────────────────────────┐
+│ SensAI ANALYTICS DASHBOARD [LIVE - Last updated: 3:42 PM]  │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ 📊 QUICK STATS  📈 TOP QUIZZES  👥 STUDENTS  ⚙️ ADMIN    │
+│                                                             │
+│ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐       │
+│ │ Active Users │ │ Quiz Attempts│ │ Avg AI Usage │       │
+│ │   247        │ │   1,247      │ │    68%       │       │
+│ │    ↑ 12%     │ │    ↑ 5%      │ │    ↑ 3%      │       │
+│ └──────────────┘ └──────────────┘ └──────────────┘       │
+│                                                             │
+│ SYSTEM PERFORMANCE (Last 24 Hours)                        │
+│ ┌─────────────────────────────────────────────────────┐  │
+│ │ Uptime: 99.8%    Response: 245ms    Errors: 0.05% │  │
+│ └─────────────────────────────────────────────────────┘  │
+│                                                             │
+│ RECENT ACTIVITY FEED                                      │
+│ ┌─────────────────────────────────────────────────────┐  │
+│ │ 3:41 PM - Quiz &quot;Algorithms Final&quot; submitted by 14  │  │
+│ │ 3:39 PM - AI assisted 127 messages in last hour    │  │
+│ │ 3:35 PM - New student registered (Total: 980)      │  │
+│ │ 3:30 PM - Question 1847 flagged (58% success)      │  │
+│ └─────────────────────────────────────────────────────┘  │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</code></pre>
+<hr>
+<h2>Conclusion</h2>
+<p>The SensAI analytics platform <strong>roadmap</strong> includes:</p>
+<p>✅ <strong>Planned Multi-Layer Insights</strong>: From platform metrics to individual student progress<br>
+✅ <strong>Future Actionable Data</strong>: Recommendations for instructors, students, and admins<br>
+✅ <strong>Roadmap for Real-Time Monitoring</strong>: Planned live dashboards for performance tracking<br>
+✅ <strong>Learning Science Foundation</strong>: Designed based on educational research principles<br>
+✅ <strong>Scalable Architecture</strong>: Built to support institutional growth</p>
+<p><strong>Strategic Vision</strong>:</p>
+<ul>
+<li>68% AI adoption will drive improved learning outcomes as analytics mature</li>
+<li>Question performance data will inform continuous instructional design improvement</li>
+<li>Optimal learning strategies (retry timing, mistake patterns) will enhance student success</li>
+<li>Early at-risk student identification will enable proactive support</li>
+</ul>
+<hr>
+<h2>Analytics Roadmap Timeline</h2>
+<h3>Phase 1 (Current)</h3>
+<ul>
+<li>✅ Basic attempt tracking and score recording</li>
+<li>✅ Quiz performance summaries</li>
+<li>⏳ Foundation for analytics infrastructure</li>
+</ul>
+<h3>Phase 2 (Planned - Q1/Q2 2026)</h3>
+<ul>
+<li>📋 Platform-level dashboards</li>
+<li>📋 User adoption metrics</li>
+<li>📋 Basic performance trends</li>
+<li>📋 Course analytics overview</li>
+</ul>
+<h3>Phase 3 (Planned - Q3/Q4 2026)</h3>
+<ul>
+<li>📋 Student learning analytics</li>
+<li>📋 Individual progress dashboards</li>
+<li>📋 Cohort pattern analysis</li>
+<li>📋 At-risk student identification</li>
+</ul>
+<h3>Phase 4 (Planned - 2027+)</h3>
+<ul>
+<li>📋 Advanced mistake categorization with AI</li>
+<li>📋 Predictive modeling for learning outcomes</li>
+<li>📋 Personalized recommendations</li>
+<li>📋 Integration with LMS systems</li>
+</ul>
+<hr>
+<h2>Appendix: Data Dictionary</h2>
+<h3>Metrics Definitions</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Formula</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Success Rate</strong></td>
+<td>(Correct / Total Attempts) × 100</td>
+<td>% of attempts getting correct answer</td>
+</tr>
+<tr>
+<td><strong>Average Score</strong></td>
+<td>Sum of Scores / Number of Quizzes</td>
+<td>Mean quiz performance</td>
+</tr>
+<tr>
+<td><strong>Completion Rate</strong></td>
+<td>(Completed / Enrolled) × 100</td>
+<td>% of students finishing quiz</td>
+</tr>
+<tr>
+<td><strong>AI Engagement</strong></td>
+<td>(Used Chat / Total Attempts) × 100</td>
+<td>% of attempts using AI</td>
+</tr>
+<tr>
+<td><strong>Learning Velocity</strong></td>
+<td>(Score_final - Score_initial) / Attempts</td>
+<td>Points gained per retry</td>
+</tr>
+<tr>
+<td><strong>Confidence Calibration</strong></td>
+<td>Abs(Self-rating - Actual)</td>
+<td>Metacognitive accuracy</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><strong>Analytics Platform Status</strong>: Planning Phase / MVP Foundation<br>
+<strong>Data Retention Policy</strong>: 5 years (FERPA compliant) - planned implementation<br>
+<strong>Planned Update Frequency</strong>: Real-time with 5-minute dashboard refresh cycles<br>
+<strong>Future Export Capability</strong>: CSV, PDF, JSON formats (roadmap item)</p>
+
+</body>
+</html>
