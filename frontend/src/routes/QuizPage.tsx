@@ -106,7 +106,7 @@ export default function QuizPage() {
             
             // Helper function to remove emojis from text
             const removeEmojis = (text: string) => {
-                return text.replace(/[\p{Emoji}\p{Emoji_Component}]/gu, '').trim();
+                return text.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{27BF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]/gu, '').trim();
             };
             
             const chats = Object.entries(chatMap)

@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>04_Detailed_Design_Document</title>
+	<style>
+		/* Basic styles for readability */
+		body {
+			font-family: sans-serif;
+			max-width: 800px;
+			margin: 2em auto;
+			padding: 0 1em;
+			line-height: 1.6;
+		}
+		img { max-width: 100%; height: auto; }
+		pre { background-color: #f4f4f4; padding: 1em; overflow-x: auto; }
+		code { font-family: monospace; }
+	</style>
+</head>
+<body>
+	<h1>SensAI: Detailed Design Document</h1>
+<h2>Table of Contents</h2>
+<ol>
+<li><a href="#user-personas">User Personas</a></li>
+<li><a href="#system-architecture">System Architecture</a></li>
+<li><a href="#core-user-workflows">Core User Workflows</a></li>
+<li><a href="#sequence-diagrams">Sequence Diagrams</a></li>
+<li><a href="#activity-diagrams">Activity Diagrams</a></li>
+<li><a href="#data-models">Data Models</a></li>
+<li><a href="#api-contract">API Contract</a></li>
+<li><a href="#uiux-design-patterns">UI/UX Design Patterns</a></li>
+</ol>
+<hr>
+<h2>User Personas</h2>
+<h3>Persona 1: Sarah (Student)</h3>
+<p><strong>Profile:</strong></p>
+<ul>
+<li><strong>Name:</strong> Sarah Chen</li>
+<li><strong>Role:</strong> Undergraduate Computer Science Student</li>
+<li><strong>Age:</strong> 20</li>
+<li><strong>Technical Level:</strong> Intermediate (knows how to code, basic DB concepts)</li>
+<li><strong>Goals:</strong> Understand algorithms better, improve quiz scores, manage time</li>
+<li><strong>Pain Points:</strong> Struggles with complexity analysis, lacks real-time help during exams</li>
+</ul>
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Attempts quizzes at last minute (night before deadline)</li>
+<li>Uses AI chat when stuck, averages 2-3 messages per question</li>
+<li>Retakes quiz multiple times to improve score</li>
+<li>Exports chat history to study later</li>
+<li>Prefers quick feedback over lengthy explanations</li>
+</ul>
+<p><strong>Key Needs:</strong></p>
+<ul>
+<li>Non-invasive AI guidance (don’t spoil answers)</li>
+<li>Mobile-friendly interface</li>
+<li>Clear answer explanations</li>
+<li>Chat history for review</li>
+</ul>
+<hr>
+<h3>Persona 2: Dr. James (Instructor)</h3>
+<p><strong>Profile:</strong></p>
+<ul>
+<li><strong>Name:</strong> Dr. James Mitchell</li>
+<li><strong>Role:</strong> Associate Professor, Computer Science</li>
+<li><strong>Age:</strong> 45</li>
+<li><strong>Technical Level:</strong> High (strong pedagogy, moderate tech adoption)</li>
+<li><strong>Goals:</strong> Improve student learning outcomes, identify struggling students early, reduce grading workload</li>
+<li><strong>Pain Points:</strong> Manual grading is time-consuming, can’t see where students struggle conceptually</li>
+</ul>
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Creates 8-10 quizzes per semester</li>
+<li>Reviews analytics at end of week</li>
+<li>Makes curriculum adjustments based on question performance</li>
+<li>Meets with struggling students using analytics as reference</li>
+<li>Values data-driven insights over anecdotes</li>
+</ul>
+<p><strong>Key Needs:</strong></p>
+<ul>
+<li>Intuitive analytics dashboard</li>
+<li>Per-question difficulty metrics</li>
+<li>Student mistake categorization</li>
+<li>Export capabilities for reports</li>
+<li>Mobile dashboard for quick checks</li>
+</ul>
+<hr>
+<h3>Persona 3: Dean Patricia (Administrator)</h3>
+<p><strong>Profile:</strong></p>
+<ul>
+<li><strong>Name:</strong> Dean Patricia Gonzalez</li>
+<li><strong>Role:</strong> Associate Dean, Academic Affairs</li>
+<li><strong>Age:</strong> 52</li>
+<li><strong>Technical Level:</strong> Low (uses spreadsheets, basic dashboards)</li>
+<li><strong>Goals:</strong> Ensure institutional compliance, monitor course effectiveness, plan budgets</li>
+<li><strong>Pain Points:</strong> Limited visibility into teaching quality, difficulty comparing courses</li>
+</ul>
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Reviews platform metrics quarterly</li>
+<li>Uses dashboards for accreditation reports</li>
+<li>Needs exportable data for presentations</li>
+<li>Concerned with data privacy and security</li>
+<li>Delegates detailed analysis to faculty</li>
+</ul>
+<p><strong>Key Needs:</strong></p>
+<ul>
+<li>System health metrics</li>
+<li>Platform adoption statistics</li>
+<li>Data export for compliance</li>
+<li>Security assurance</li>
+<li>Minimal training required</li>
+</ul>
+<hr>
+<h3>Persona 4: Alex (Teaching Assistant)</h3>
+<p><strong>Profile:</strong></p>
+<ul>
+<li><strong>Name:</strong> Alex Rodriguez</li>
+<li><strong>Role:</strong> Graduate Teaching Assistant</li>
+<li><strong>Age:</strong> 24</li>
+<li><strong>Technical Level:</strong> Intermediate</li>
+<li><strong>Goals:</strong> Support students effectively, help professor with grading, learn about teaching</li>
+<li><strong>Pain Points:</strong> Limited time, multiple courses to support</li>
+</ul>
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Monitors quiz submissions in real-time</li>
+<li>Helps students interpret analytics</li>
+<li>Prepares summary reports for professor</li>
+<li>Uses attempt lookups to find specific student issues</li>
+<li>Works part-time, prefers quick access over depth</li>
+</ul>
+<p><strong>Key Needs:</strong></p>
+<ul>
+<li>Quick filters and searches</li>
+<li>Real-time notifications (future feature)</li>
+<li>Easy data export</li>
+<li>Mobile accessibility</li>
+<li>Context-sensitive help</li>
+</ul>
+<hr>
+<h2>System Architecture</h2>
+<h3>High-Level Component Diagram</h3>
+<pre><code>┌─────────────────────────────────────────────────────────┐
+│                  PRESENTATION LAYER                     │
+│  (React SPA - TypeScript + Tailwind CSS)               │
+├──────────────────────────────────────────────────────────┤
+│  Homepage │ StudentPage │ QuizPage │ InstructorPage     │
+│  InstructorAnalyticsPage │ AccountPage                  │
+└──────────┬──────────────────────────────────────────────┘
+           │ HTTP/REST
+┌──────────▼──────────────────────────────────────────────┐
+│              APPLICATION LAYER                          │
+│  (Express.js Router + Middleware)                      │
+├──────────────────────────────────────────────────────────┤
+│ authRoutes │ quizRoutes │ questionRoutes                │
+│ attemptRoutes │ aiRoutes │ chatRoutes                   │
+│ analyticRoutes │ userRoutes                             │
+│                                                          │
+│ Middleware: sessionMiddleware, CORS, auth checks       │
+└──────────┬──────────────────────────────────────────────┘
+           │ SQL/Queries
+┌──────────▼──────────────────────────────────────────────┐
+│                   DATA LAYER                            │
+│  (MySQL + Utilities)                                   │
+├──────────────────────────────────────────────────────────┤
+│ dbConnection (pool) │ Table: user, role, quiz,         │
+│ question, question_attempt, chat_history,              │
+│ mistake_type, session, course                           │
+│                                                          │
+│ External: Google Gemini API (AI)                        │
+└──────────────────────────────────────────────────────────┘
+</code></pre>
+<h3>Module Responsibility Map</h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Responsibility</th>
+<th>Key Functions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>authRoutes.js</strong></td>
+<td>User registration &amp; login</td>
+<td>POST /register, /login, /logout</td>
+</tr>
+<tr>
+<td><strong>quizRoutes.js</strong></td>
+<td>Quiz CRUD &amp; access control</td>
+<td>GET/POST/PUT /quiz, /quiz/:id/:code</td>
+</tr>
+<tr>
+<td><strong>questionRoutes.js</strong></td>
+<td>Question management</td>
+<td>GET/POST/PUT/DELETE /question</td>
+</tr>
+<tr>
+<td><strong>attemptRoutes.js</strong></td>
+<td>Quiz submissions &amp; tracking</td>
+<td>POST /submit, GET /student, /quiz/:id</td>
+</tr>
+<tr>
+<td><strong>aiRoutes.js</strong></td>
+<td>AI chat &amp; mistake ID</td>
+<td>POST /chat, /summary</td>
+</tr>
+<tr>
+<td><strong>chatRoutes.js</strong></td>
+<td>Chat history storage</td>
+<td>POST /saveChat</td>
+</tr>
+<tr>
+<td><strong>analyticRoutes.js</strong></td>
+<td>Metrics &amp; insights</td>
+<td>GET /metrics, /quiz/:id, /question/:id</td>
+</tr>
+<tr>
+<td><strong>userRoutes.js</strong></td>
+<td>User profile &amp; API keys</td>
+<td>GET/PUT /profile, /apiKey</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>Core User Workflows</h2>
+<h3>Workflow 1: Student Taking a Quiz</h3>
+<pre><code>START
+  │
+  ├─ Student navigates to Homepage
+  │
+  ├─ Enters Quiz ID &amp; Access Code
+  │  (Frontend validates format)
+  │
+  ├─ [Backend: POST /api/quiz/:quizId/:accessCode]
+  │  │ ├─ Verify session exists
+  │  │ ├─ Check access code matches
+  │  │ ├─ Fetch quiz + questions
+  │  │ └─ Return quiz data
+  │  │
+  │  └─ [Frontend: Render Quiz Page]
+  │
+  ├─ Display Question 1 of N
+  │
+  ├─ Student inputs answer
+  │
+  ├─ DECISION: Click &quot;Check Answer&quot;?
+  │  │
+  │  ├─ YES:
+  │  │  │ ├─ [Backend: POST /api/attempt/submit]
+  │  │  │ │  ├─ Record attempt (userId, questionId, answer)
+  │  │  │ │  ├─ Compare to correct answer
+  │  │  │ │  ├─ If wrong: Call Gemini for mistake type
+  │  │  │ │  ├─ Increment numMsgs if used AI
+  │  │  │ │  └─ Return feedback
+  │  │  │ │
+  │  │  │ └─ Display result (✓ or ✗)
+  │  │  │
+  │  │  └─ DECISION: Use AI Chat?
+  │  │     │
+  │  │     ├─ YES:
+  │  │     │  │ ├─ [Frontend: Open Chat Modal]
+  │  │     │  │ ├─ Fetch prior chat history
+  │  │     │  │ └─ Student types message
+  │  │     │  │
+  │  │     │  └─ [Backend: POST /api/ai/chat]
+  │  │     │     ├─ Load question context
+  │  │     │     ├─ Pass to Gemini API
+  │  │     │     └─ Return AI response
+  │  │     │
+  │  │     └─ NO: Continue to next question
+  │  │
+  │  └─ NO: Skip to next question
+  │
+  ├─ DECISION: Last question?
+  │  │
+  │  ├─ YES: Show &quot;Submit Quiz&quot; prompt
+  │  │  │
+  │  │  └─ [Backend: POST /api/attempt/submit-all]
+  │  │     ├─ Record all final attempts
+  │  │     ├─ Calculate total score
+  │  │     ├─ For each wrong Q: ID mistake
+  │  │     └─ Return results + AI summary
+  │  │
+  │  └─ NO: Move to next question (loop back)
+  │
+  ├─ Display Results
+  │  (Score, breakdown, AI-generated feedback)
+  │
+  └─ END (Option to retry)
+</code></pre>
+<h3>Workflow 2: Instructor Reviewing Analytics</h3>
+<pre><code>START
+  │
+  ├─ Instructor logs in → Dashboard loads
+  │
+  ├─ [Backend: GET /api/analytic/metrics]
+  │  ├─ Query user counts, quiz counts, attempt totals
+  │  └─ Return 5 platform KPI cards
+  │
+  ├─ Select Course [Dropdown]
+  │
+  ├─ Select Quiz [Dropdown]
+  │
+  ├─ [Backend: GET /api/analytic/quiz/:quizId]
+  │  ├─ Query question_attempt table filtered by quizId
+  │  ├─ Calculate: attempts, avg score, completion rate, avg AI messages
+  │  └─ Return 4 KPI cards
+  │
+  ├─ View Question Insights Table
+  │  (Auto-populated from DB)
+  │
+  ├─ DECISION: Drill into specific question?
+  │  │
+  │  ├─ YES:
+  │  │  │ ├─ [Backend: GET /api/analytic/question/:questionId]
+  │  │  │ │  ├─ Return % correct, difficulty, mistakes
+  │  │  │ │  └─ Mistake type breakdown
+  │  │  │ │
+  │  │  │ └─ Display question detail modal
+  │  │
+  │  └─ NO: Use Attempt Lookups
+  │
+  ├─ Use Filters (Student, Quiz, Question)
+  │
+  ├─ [Backend: GET /api/attempt/* with filters]
+  │  └─ Return matching attempt records
+  │
+  ├─ Review attempt details (answer, correctness, mistakes)
+  │
+  ├─ DECISION: Export data?
+  │  │
+  │  ├─ YES:
+  │  │  └─ [Browser: Download CSV/PDF]
+  │  │
+  │  └─ NO: Continue analyzing
+  │
+  └─ END (Use insights to make instructional decisions)
+</code></pre>
+<hr>
+<h2>Sequence Diagrams</h2>
+<h3>Diagram 1: Quiz Attempt with Feedback</h3>
+<pre><code>Student        Frontend      Backend       Database    Gemini API
+   │              │             │             │            │
+   │ Enter quiz ID│             │             │            │
+   ├─────────────&gt;│             │             │            │
+   │              │ POST /quiz/:id/:code      │            │
+   │              ├────────────&gt;│             │            │
+   │              │             │ SELECT      │            │
+   │              │             ├────────────&gt;│            │
+   │              │             │&lt;────────────┤            │
+   │              │&lt;────────────┤             │            │
+   │              │ quiz data   │             │            │
+   │&lt;─────────────┤             │             │            │
+   │ Quiz loaded  │             │             │            │
+   │              │             │             │            │
+   │ Answer Q1    │             │             │            │
+   ├─────────────&gt;│             │             │            │
+   │              │ POST /attempt/submit      │            │
+   │              ├────────────&gt;│             │            │
+   │              │             │ INSERT      │            │
+   │              │             ├────────────&gt;│            │
+   │              │             │&lt;────────────┤            │
+   │              │             │             │            │
+   │              │             │ Compare ans │            │
+   │              │             │ with correct│            │
+   │              │             │             │            │
+   │              │             │ If wrong:   │            │
+   │              │             │ POST mistake│
+   │              │             ├───────────────────────&gt;│
+   │              │             │             │  mistake │
+   │              │             │&lt;────────────────────────┤
+   │              │             │  mistakeId  │            │
+   │              │             │ UPDATE      │            │
+   │              │             ├────────────&gt;│            │
+   │              │             │&lt;────────────┤            │
+   │              │&lt;────────────┤             │            │
+   │              │ ✓/✗ feedback│             │            │
+   │&lt;─────────────┤             │             │            │
+   │ See result   │             │             │            │
+   │              │             │             │            │
+   │ Use AI chat? │             │             │            │
+   ├─────────────&gt;│             │             │            │
+   │              │ POST /ai/chat             │            │
+   │              ├────────────&gt;│             │            │
+   │              │             │ GET context │            │
+   │              │             ├────────────&gt;│            │
+   │              │             │&lt;────────────┤            │
+   │              │             │             │            │
+   │              │             │ POST request│
+   │              │             ├───────────────────────&gt;│
+   │              │             │             │          │
+   │              │             │             │  AI gen. │
+   │              │             │&lt;───────────────────────┤
+   │              │             │  response   │            │
+   │              │             │             │            │
+   │              │             │ SAVE chat   │            │
+   │              │             ├────────────&gt;│            │
+   │              │             │&lt;────────────┤            │
+   │              │&lt;────────────┤             │            │
+   │              │ AI response │             │            │
+   │&lt;─────────────┤             │             │            │
+   │ Read reply   │             │             │            │
+</code></pre>
+<h3>Diagram 2: Login &amp; Session Management</h3>
+<pre><code>Student        Frontend      Backend       Database
+   │              │             │             │
+   │ Click Login  │             │             │
+   ├─────────────&gt;│             │             │
+   │              │             │             │
+   │ Enter email  │             │             │
+   │ + password   │             │             │
+   ├─────────────&gt;│             │             │
+   │              │ POST /login │             │
+   │              ├────────────&gt;│             │
+   │              │             │ SELECT user │
+   │              │             ├────────────&gt;│
+   │              │             │&lt;────────────┤
+   │              │             │ user found? │
+   │              │             │             │
+   │              │             │ bcrypt.compare(
+   │              │             │   password, hash)
+   │              │             │             │
+   │              │             │ Match? ✓    │
+   │              │             │             │
+   │              │             │ INSERT INTO │
+   │              │             │ session     │
+   │              │             ├────────────&gt;│
+   │              │             │&lt;────────────┤
+   │              │             │ sessionId   │
+   │              │&lt;────────────┤             │
+   │              │ Set cookie  │             │
+   │              │ + redirect  │             │
+   │&lt;─────────────┤             │             │
+   │ Dashboard    │             │             │
+   │ visible      │             │             │
+   │              │             │             │
+   │ [Later]      │             │             │
+   │ Logout       │             │             │
+   ├─────────────&gt;│             │             │
+   │              │ POST /logout│             │
+   │              ├────────────&gt;│             │
+   │              │             │ DELETE from │
+   │              │             │ session     │
+   │              │             ├────────────&gt;│
+   │              │             │&lt;────────────┤
+   │              │&lt;────────────┤             │
+   │              │ Clear cookie│             │
+   │&lt;─────────────┤             │             │
+   │ Logged out   │             │             │
+</code></pre>
+<h3>Diagram 3: Analytics Data Collection</h3>
+<pre><code>Student        Frontend    Backend      Database   Gemini API
+   │              │          │            │          │
+   │ Submit answer│          │            │          │
+   ├─────────────&gt;│          │            │          │
+   │              │ attempt  │            │          │
+   │              │ payload  │            │          │
+   │              ├─────────&gt;│            │          │
+   │              │          │ VALIDATE   │          │
+   │              │          │            │          │
+   │              │          │ Check      │          │
+   │              │          │ correctness│          │
+   │              │          │            │          │
+   │              │          │ INSERT INTO│          │
+   │              │          │ attempt    │          │
+   │              │          ├───────────&gt;│          │
+   │              │          │&lt;───────────┤          │
+   │              │          │ (recorded) │          │
+   │              │          │            │          │
+   │              │          │ If wrong:  │          │
+   │              │          │ POST       │
+   │              │          ├──────────────────────&gt;│
+   │              │          │ {question, │
+   │              │          │  student ans,
+   │              │          │  correct ans,
+   │              │          │  context}  │          │
+   │              │          │            │ (analyze)
+   │              │          │&lt;──────────────────────┤
+   │              │          │ mistakeId  │          │
+   │              │          │            │          │
+   │              │          │ UPDATE     │          │
+   │              │          │ attempt    │          │
+   │              │          │ SET        │          │
+   │              │          │ mistakeId=?│          │
+   │              │          ├───────────&gt;│          │
+   │              │          │&lt;───────────┤          │
+   │              │          │            │          │
+   │ [Chat]       │          │            │          │
+   │ Send msg     │          │            │          │
+   ├─────────────&gt;│          │            │          │
+   │              │ POST     │            │          │
+   │              │ /ai/chat │            │          │
+   │              ├─────────&gt;│            │          │
+   │              │          │ Fetch chat │
+   │              │          │ history    │
+   │              │          ├───────────&gt;│          │
+   │              │          │&lt;───────────┤          │
+   │              │          │ (history)  │          │
+   │              │          │            │          │
+   │              │          │ Increment  │
+   │              │          │ numMsgs    │          │
+   │              │          │            │          │
+   │              │          │ POST       │
+   │              │          ├──────────────────────&gt;│
+   │              │          │ (system + │
+   │              │          │  context)  │ AI
+   │              │          │&lt;──────────────────────┤
+   │              │          │ (response) │          │
+   │              │          │            │          │
+   │              │          │ SAVE TO    │
+   │              │          │ chat_history          │
+   │              │          ├───────────&gt;│          │
+   │              │          │&lt;───────────┤          │
+   │              │&lt;─────────┤            │          │
+   │              │ response │            │          │
+   │&lt;─────────────┤          │            │          │
+   │ See reply    │          │            │          │
+</code></pre>
+<hr>
+<h2>Activity Diagrams</h2>
+<h3>Activity 1: Quiz Submission Process</h3>
+<pre><code>┌─────────────────────────────────────────────────────┐
+│           STUDENT QUIZ SUBMISSION FLOW              │
+└─────────────────────────────────────────────────────┘
+
+                      START
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │  Student on Quiz Page      │
+        │  (M questions answered)    │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Click &quot;Submit Quiz&quot;        │
+        │ (Confirmation modal)       │
+        └───────────────────────────┘
+                        │
+                        ▼
+             ┌──────────────────────┐
+             │  Confirm Submission? │
+             └──────────────────────┘
+                 /              \
+               YES              NO
+               /                  \
+              ▼                    ▼
+     ┌──────────────┐    ┌──────────────┐
+     │ POST /submit │    │ Return to    │
+     │ (all answers)│    │ Quiz Page    │
+     └──────────────┘    └──────────────┘
+              │                   │
+              │                   └──────┐
+              │                          │
+              ▼                          │
+     ┌──────────────────────────┐        │
+     │ Backend Processes Each Q  │        │
+     │ (in loop):                │        │
+     │ 1. Check correctness      │        │
+     │ 2. If wrong → Call Gemini │        │
+     │ 3. Categorize mistake     │        │
+     │ 4. Record all data        │        │
+     └──────────────────────────┘        │
+              │                          │
+              ▼                          │
+     ┌──────────────────────────┐        │
+     │ Calculate Total Score    │        │
+     │ (correct / total)        │        │
+     └──────────────────────────┘        │
+              │                          │
+              ▼                          │
+     ┌──────────────────────────┐        │
+     │ Call Gemini for Summary  │        │
+     │ (AI-generated feedback)  │        │
+     └──────────────────────────┘        │
+              │                          │
+              ▼                          │
+     ┌──────────────────────────┐        │
+     │ Display Results Page     │        │
+     │ - Score                  │        │
+     │ - Breakdown by Q         │        │
+     │ - AI Summary             │        │
+     │ - Option to Retry        │        │
+     └──────────────────────────┘        │
+              │                          │
+              └──────────────┬───────────┘
+                             │
+                             ▼
+                           END
+</code></pre>
+<h3>Activity 2: Analytics Dashboard Load</h3>
+<pre><code>┌─────────────────────────────────────────────────────┐
+│        INSTRUCTOR ANALYTICS DASHBOARD LOAD          │
+└─────────────────────────────────────────────────────┘
+
+                      START
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Instructor Logged In      │
+        │ (Session verified)        │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Click &quot;Analytics&quot;         │
+        │ from Navigation           │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ GET /api/analytic/metrics │
+        │ (load platform KPIs)      │
+        └───────────────────────────┘
+                        │
+                        ▼
+    ┌─────────────────────────────────┐
+    │ Display 5 Platform Metric Cards:│
+    │ - Total Users                   │
+    │ - Total Students                │
+    │ - Total Instructors             │
+    │ - Total Quizzes                 │
+    │ - Total Courses                 │
+    └─────────────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Select Course [Dropdown]  │
+        │ (courses owned by inst.)   │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Select Quiz [Dropdown]    │
+        │ (quizzes in course)       │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ GET /api/analytic/quiz/:id│
+        │ (load quiz stats)         │
+        └───────────────────────────┘
+                        │
+                        ▼
+    ┌─────────────────────────────────┐
+    │ Display 4 Quiz KPI Cards:       │
+    │ - Total Attempts                │
+    │ - Average Score                 │
+    │ - Completion Rate               │
+    │ - Avg AI Messages               │
+    └─────────────────────────────────┘
+                        │
+                        ▼
+    ┌─────────────────────────────────┐
+    │ GET /api/analytic/question-stats│
+    │ (load per-question metrics)     │
+    └─────────────────────────────────┘
+                        │
+                        ▼
+    ┌─────────────────────────────────┐
+    │ Render Question Insights Table: │
+    │ [Sort controls]                 │
+    │ [Color-coded difficulty]        │
+    │ [All metrics displayed]         │
+    └─────────────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Dashboard Ready for Use   │
+        │ (all data loaded &amp; shown) │
+        └───────────────────────────┘
+                        │
+                        ▼
+             ┌──────────────────────┐
+             │ User Can Now:        │
+             │ - Sort by columns    │
+             │ - Filter attempts    │
+             │ - Export data        │
+             │ - Drill into details │
+             └──────────────────────┘
+                        │
+                        ▼
+                      END
+</code></pre>
+<h3>Activity 3: Mistake Categorization Flow</h3>
+<pre><code>┌─────────────────────────────────────────────────────┐
+│     AI-DRIVEN MISTAKE CATEGORIZATION PROCESS       │
+└─────────────────────────────────────────────────────┘
+
+                      START
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Student Submits Answer    │
+        │ (answer recorded)         │
+        └───────────────────────────┘
+                        │
+                        ▼
+             ┌──────────────────────┐
+             │ Answer Correct?      │
+             └──────────────────────┘
+               /              \
+              YES             NO
+             /                 \
+            ▼                   ▼
+    ┌────────────┐    ┌──────────────────┐
+    │ Set isCorrect  │ Set isCorrect=FALSE
+    │ = TRUE         │ → Need Categorization
+    │ → Done         │
+    └────────────┘    └──────────────────┘
+            │                  │
+            │                  ▼
+            │        ┌────────────────────┐
+            │        │ Prepare Context:   │
+            │        │ - Question text    │
+            │        │ - Student answer   │
+            │        │ - Correct answer   │
+            │        │ - Chat history     │
+            │        │ - Student confidence
+            │        └────────────────────┘
+            │                  │
+            │                  ▼
+            │        ┌────────────────────┐
+            │        │ POST to Gemini API │
+            │        │ (include prompt)   │
+            │        │ &quot;Categorize this   │
+            │        │  student's mistake&quot;
+            │        └────────────────────┘
+            │                  │
+            │                  ▼
+            │        ┌────────────────────┐
+            │        │ Gemini Analyzes:   │
+            │        │ - Concept grasp    │
+            │        │ - Calc errors      │
+            │        │ - Confidence bias  │
+            │        │ - Effort level     │
+            │        └────────────────────┘
+            │                  │
+            │                  ▼
+            │        ┌────────────────────┐
+            │        │ Return mistakeId:  │
+            │        │ 1=Misunderstanding │
+            │        │ 2=Calc Error       │
+            │        │ 3=Careless         │
+            │        │ 4=Incomplete       │
+            │        │ 5=Wrong Method     │
+            │        │ 6=Not Attempted    │
+            │        │ 7=Guess            │
+            │        └────────────────────┘
+            │                  │
+            │                  ▼
+            │        ┌────────────────────┐
+            │        │ UPDATE attempt rec │
+            │        │ SET mistakeId=?    │
+            │        └────────────────────┘
+            │                  │
+            └──────────┬───────┘
+                       │
+                       ▼
+        ┌───────────────────────────┐
+        │ Attempt Record Complete   │
+        │ (all data saved)          │
+        └───────────────────────────┘
+                       │
+                       ▼
+                     END
+</code></pre>
+<h3>Activity 4: Quiz Creation Workflow</h3>
+<pre><code>┌─────────────────────────────────────────────────────┐
+│          INSTRUCTOR QUIZ CREATION FLOW              │
+└─────────────────────────────────────────────────────┘
+
+                      START
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Click &quot;Create Quiz&quot;       │
+        │ (on Instructor Page)      │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Form: Select Course       │
+        │ (courses owned by inst.)  │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Form: Enter Quiz Title    │
+        │ (name the quiz)           │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Form: Enter System Prompt │
+        │ (customize AI behavior)   │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Click &quot;Create Quiz&quot;       │
+        │ (submit form)             │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ POST /api/quiz            │
+        │ (create quiz record)      │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Generate Access Code      │
+        │ (random string)           │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ INSERT quiz + code        │
+        │ into database             │
+        └───────────────────────────┘
+                        │
+                        ▼
+        ┌───────────────────────────┐
+        │ Redirect to &quot;Add Qs&quot;      │
+        │ page (quiz detail edit)   │
+        └───────────────────────────┘
+                        │
+                        ▼
+             ┌──────────────────────┐
+             │ Loop: Add Questions? │
+             └──────────────────────┘
+               /              \
+              YES              NO
+             /                 \
+            ▼                   ▼
+    ┌─────────────┐    ┌──────────────┐
+    │ Click &quot;Add  │    │ Click &quot;Save &amp;
+    │ Question&quot;   │    │ Publish Quiz&quot; 
+    └─────────────┘    └──────────────┘
+            │                  │
+            ▼                  │
+    ┌─────────────┐            │
+    │ Choose from │            │
+    │ question    │            │
+    │ bank or     │            │
+    │ create new  │            │
+    └─────────────┘            │
+            │                  │
+            ▼                  │
+    ┌─────────────┐            │
+    │ Link to quiz│            │
+    │ (via        │            │
+    │ quiz_quest) │            │
+    └─────────────┘            │
+            │                  │
+            └────────────┬─────┘
+                         │
+                         ▼
+        ┌───────────────────────────┐
+        │ Quiz Published            │
+        │ (students can access)     │
+        └───────────────────────────┘
+                         │
+                         ▼
+                       END
+</code></pre>
+<hr>
+<h2>Data Models</h2>
+<h3>Entity-Relationship Diagram</h3>
+<pre><code>user ──┬──────── role
+       ├──────── session
+       ├──────── question_attempt
+       ├──────── chat_history
+       └──────── course (as instructor)
+
+course ──┬─────── quiz
+         └─────── question
+
+quiz ─────┬────── quiz_questions
+          └────── question_attempt
+                  chat_history
+
+question ──┬───── quiz_questions
+           ├───── question_attempt
+           └───── chat_history
+
+question_attempt ──── mistake_type
+
+mistake_type (static lookup)
+
+session (temporary)
+
+chat_history (persistent)
+</code></pre>
+<h3>Core Tables Schema</h3>
+<h4>question_attempt (Primary Analytics Table)</h4>
+<pre><code>attemptId (PK, INT)
+userId (FK, INT) → user.userId
+questionId (FK, INT) → question.questionId
+quizId (FK, INT) → quiz.quizId
+givenAns (VARCHAR 500) - Student's answer
+isCorrect (BOOLEAN) - Correctness
+mistakeId (FK, INT) → mistake_type.mistakeId
+numMsgs (INT) - AI chat messages used
+selfConfidence (INT) - 0=Low, 1=Medium, 2=High
+dateTime (TIMESTAMP) - When submitted
+
+INDEXES: (userId, quizId), (questionId), (mistakeId)
+</code></pre>
+<h4>quiz_questions (Junction)</h4>
+<pre><code>quizId (FK, PK) → quiz.quizId
+questionId (FK, PK) → question.questionId
+ORDER BY: insertion order
+</code></pre>
+<h4>chat_history (Temporal)</h4>
+<pre><code>chatId (PK, INT)
+userId (FK, INT) → user.userId
+quizId (FK, INT) → quiz.quizId
+questionId (FK, INT) → question.questionId
+messages (LONGTEXT) - JSON array
+lastUpdated (TIMESTAMP ON UPDATE)
+
+INDEXES: (userId, quizId, questionId)
+</code></pre>
+<hr>
+<h2>API Contract</h2>
+<h3>Quiz Endpoints</h3>
+<p><strong>POST /api/quiz</strong> - Create quiz</p>
+<pre><code class="language-json">Request: {
+  &quot;title&quot;: &quot;Algorithms Final&quot;,
+  &quot;prompt&quot;: &quot;You are a tutoring assistant...&quot;,
+  &quot;courseId&quot;: 5
+}
+Response: { &quot;quizId&quot;: 12, &quot;accessCode&quot;: &quot;ABC123XYZ&quot; }
+</code></pre>
+<p><strong>GET /api/quiz/:quizId/:accessCode</strong> - Fetch quiz + questions</p>
+<pre><code class="language-json">Response: {
+  &quot;quiz&quot;: { &quot;quizId&quot;: 12, &quot;title&quot;: &quot;...&quot;, &quot;prompt&quot;: &quot;...&quot; },
+  &quot;questions&quot;: [
+    { &quot;questionId&quot;: 47, &quot;title&quot;: &quot;...&quot;, &quot;options&quot;: [...] },
+    ...
+  ]
+}
+</code></pre>
+<h3>Attempt Endpoints</h3>
+<p><strong>POST /api/attempt/submit</strong> - Submit single answer</p>
+<pre><code class="language-json">Request: {
+  &quot;userId&quot;: 1,
+  &quot;questionId&quot;: 47,
+  &quot;quizId&quot;: 12,
+  &quot;givenAns&quot;: &quot;B&quot;,
+  &quot;selfConfidence&quot;: 1,
+  &quot;numMsgs&quot;: 2
+}
+Response: {
+  &quot;correct&quot;: false,
+  &quot;mistakeType&quot;: &quot;Misunderstanding&quot;,
+  &quot;feedback&quot;: &quot;...&quot;
+}
+</code></pre>
+<h3>Analytics Endpoints</h3>
+<p><strong>GET /api/analytic/metrics</strong> - Platform overview</p>
+<pre><code class="language-json">Response: {
+  &quot;totals&quot;: {
+    &quot;users&quot;: 245,
+    &quot;students&quot;: 198,
+    &quot;instructors&quot;: 47,
+    &quot;quizzes&quot;: 23,
+    &quot;courses&quot;: 8
+  }
+}
+</code></pre>
+<p><strong>GET /api/analytic/quiz/:quizId</strong> - Quiz KPIs</p>
+<pre><code class="language-json">Response: {
+  &quot;totalAttempts&quot;: 324,
+  &quot;averageScore&quot;: 7.2,
+  &quot;completionRate&quot;: 0.76,
+  &quot;avgAIMessages&quot;: 0.87
+}
+</code></pre>
+<hr>
+<h2>UI/UX Design Patterns</h2>
+<h3>Pattern 1: KPI Card Grid</h3>
+<pre><code>┌─────────────┬─────────────┬─────────────┬─────────────┬─────────────┐
+│   Total     │  Students   │ Instructors │   Quizzes   │   Courses   │
+│   Users     │             │             │             │             │
+│   245       │   198       │    47       │    23       │     8       │
+│   ↑ 12%     │   ↑ 8%      │   ↑ 5%      │   ↑ 15%     │   ↓ 2%      │
+└─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
+</code></pre>
+<p><strong>Design Principles:</strong></p>
+<ul>
+<li>Indigo 50 background (light)</li>
+<li>Large bold numbers for quick scanning</li>
+<li>Trend arrow (↑↓) for context</li>
+<li>Tooltip on hover for more detail</li>
+</ul>
+<h3>Pattern 2: Data Grid with Sorting</h3>
+<pre><code>┌──────────────────────────────────────────────────────────┐
+│ [Sort Column ▼] [Order ▼] [Search Box]                  │
+├──────────────────────────────────────────────────────────┤
+│ Q# │ Title (sortable) │ Correct (color) │ AI (numeric) │
+├──────────────────────────────────────────────────────────┤
+│ 1  │ What is...      │ 87% 🟢          │ 0.45         │
+│ 2  │ Explain...      │ 52% 🟡          │ 1.23         │
+│ 3  │ Calculate...    │ 31% 🔴          │ 2.15         │
+└──────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Design Principles:</strong></p>
+<ul>
+<li>Column headers clickable for sort</li>
+<li>Striped rows (white/gray alternating)</li>
+<li>Hover effects (bg-indigo-50)</li>
+<li>Color-coded values (red/yellow/green)</li>
+</ul>
+<h3>Pattern 3: Filter Interface</h3>
+<pre><code>┌─────────────────────────────────────────┐
+│ FILTER OPTIONS                          │
+├─────────────────────────────────────────┤
+│ Student:    [Select Student ▼]          │
+│ Quiz:       [Select Quiz ▼]             │
+│ Question:   [Select Question ▼]         │
+│ Correct:    [All ▼] (✓/✗/Any)           │
+│                                         │
+│ [Search] [Reset] [Apply Filters]       │
+└─────────────────────────────────────────┘
+</code></pre>
+<p><strong>Design Principles:</strong></p>
+<ul>
+<li>Dropdown menus populate from DB</li>
+<li>Multiple filters combinable</li>
+<li>Reset button clears all</li>
+<li>Apply button triggers query</li>
+</ul>
+<h3>Pattern 4: Modal/Dialog</h3>
+<pre><code>┌─────────────────────────────────────────────────────┐
+│ ╳ Question Details                                  │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│ Question: &quot;What is the time complexity...?&quot;        │
+│ Correct Answer: &quot;O(n log n)&quot;                       │
+│ Other Options: [&quot;O(n²)&quot;, &quot;O(n)&quot;, &quot;O(log n)&quot;]       │
+│                                                     │
+│ % Correct: 67% 🟡                                  │
+│ Avg AI Messages: 1.23                              │
+│ Avg Confidence: 1.34 / 2.0                         │
+│                                                     │
+│ Mistake Distribution:                              │
+│ ├─ Misunderstanding: 45%                          │
+│ ├─ Calculation Error: 28%                         │
+│ └─ Careless: 27%                                   │
+│                                                     │
+│ [Close]                                             │
+└─────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>Design Principles:</strong></p>
+<ul>
+<li>Overlay with semi-transparent background</li>
+<li>Close button (X) in top-right</li>
+<li>Organized sections with labels</li>
+<li>Scrollable if content exceeds viewport</li>
+</ul>
+<hr>
+<h2>User Stories &amp; Acceptance Criteria</h2>
+<h3>User Story 1: Student Attempts Quiz</h3>
+<p><strong>As a</strong> student,<br>
+<strong>I want to</strong> take a quiz and receive feedback,<br>
+<strong>So that</strong> I can assess my understanding.</p>
+<p><strong>Acceptance Criteria:</strong></p>
+<ul>
+<li>[ ] Can enter quiz ID and access code</li>
+<li>[ ] Quiz loads with all questions</li>
+<li>[ ] Can answer and submit each question</li>
+<li>[ ] Receives immediate ✓/✗ feedback</li>
+<li>[ ] Can use AI chat for help</li>
+<li>[ ] Can view final results and summary</li>
+<li>[ ] Can retry quiz</li>
+</ul>
+<h3>User Story 2: Instructor Reviews Analytics</h3>
+<p><strong>As an</strong> instructor,<br>
+<strong>I want to</strong> view detailed analytics on student performance,<br>
+<strong>So that</strong> I can identify struggling students and adjust instruction.</p>
+<p><strong>Acceptance Criteria:</strong></p>
+<ul>
+<li>[ ] Dashboard shows platform metrics</li>
+<li>[ ] Can select course and quiz</li>
+<li>[ ] Sees 4 KPI cards per quiz</li>
+<li>[ ] Question insights table shows all metrics</li>
+<li>[ ] Can sort by any column</li>
+<li>[ ] Color-coded difficulty indicators</li>
+<li>[ ] Can drill into individual questions</li>
+<li>[ ] Can filter by student/quiz/question</li>
+<li>[ ] Can export data</li>
+</ul>
+<h3>User Story 3: Identify Misconceptions</h3>
+<p><strong>As an</strong> instructor,<br>
+<strong>I want to</strong> see what types of mistakes students made,<br>
+<strong>So that</strong> I can provide targeted re-instruction.</p>
+<p><strong>Acceptance Criteria:</strong></p>
+<ul>
+<li>[ ] Mistake types clearly labeled</li>
+<li>[ ] Distribution shown per question</li>
+<li>[ ] Can see specific student mistakes</li>
+<li>[ ] AI categorization appears accurate</li>
+<li>[ ] Mistakes help inform instruction</li>
+</ul>
+<hr>
+<h2>Conclusion</h2>
+<p>This detailed design document provides:</p>
+<p>✅ <strong>Persona-Based Design</strong>: Solutions tailored to 4 key user types<br>
+✅ <strong>Visual Workflows</strong>: Process flows showing user journeys<br>
+✅ <strong>Technical Sequences</strong>: Detailed interaction diagrams between components<br>
+✅ <strong>Activity Diagrams</strong>: Step-by-step processes (submission, analytics load, categorization)<br>
+✅ <strong>Data Models</strong>: Complete ER diagram and schema<br>
+✅ <strong>API Contract</strong>: Input/output specifications<br>
+✅ <strong>UI Patterns</strong>: Reusable design components<br>
+✅ <strong>User Stories</strong>: Requirements from user perspective</p>
+<p>The system is designed to support the complete learning lifecycle: from student quiz attempt through instructor analysis to data-driven decision-making.</p>
+<hr>
+<p><strong>Document Version</strong>: 1.0<br>
+<strong>Last Updated</strong>: December 10, 2025<br>
+<strong>Project</strong>: SensAI Capstone</p>
+
+</body>
+</html>

@@ -66,7 +66,7 @@ export default function QuestionCard({
     const [isChatOpen, setIsChatOpen] = useState(false);
 
     const hasCheckedAnswer = feedback !== null;
-    const disabled = forceDisabled || submitting || hasCheckedAnswer;
+    const disabled = forceDisabled || submitting || (lockAfterSubmit && hasCheckedAnswer);
     const checkAnswerDisabled =
         !selected || submitting || forceDisabled || selfConfidence === null || hasCheckedAnswer;
     const canReset = !forceDisabled && hasCheckedAnswer;

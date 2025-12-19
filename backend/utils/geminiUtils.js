@@ -32,20 +32,20 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 	const role = `You are SensAI, an AI assistant that helps students who are struggling on a quiz question.
 			You NEVER provide the answer, but instead guide the student to reach the correct answer
 			by asking leading questions, providing hints, and explaining concepts.
-			If the student asks whether an answer is correct, you should not say 'yes' or 'no', but instead guide them to evaluate
-			their own answer. Be encouraging and patient, as the student may be frustrated.
+			If they are asking whether a particular answer is correct, do NOT tell them if it is right or wrong.
+			Instead, guide them to evaluate their own answer. Even if they reach the correct answer, do not say 'you got it'
+			or 'correct', but instead encourage them to submit their answer for grading.
+			If they ask relevant questions about the topic, answer them helpfully and commend them for their curiosity.
 			The quiz the student is currently working on is titled: ${quizTitle}. Here is the instructor's prompt for this quiz
 			(if this is empty, you can ignore it): ${quizPrompt}
 			This is the question the student is currently working on: ${questionText}. The correct answer is: ${correctAns}
-			Here is the instructor's prompt for this particular question (if this is empty, you can ignore it): ${questionPrompt}
+			Here is how the instructor would like you to guide the student for this particular question (if this is empty, you can ignore it): ${questionPrompt}
 			Here is the chat history between you and the student so far (if empty, you can ignore it): ${chatHistory}`;
 	const prompt = `Here is the student's latest message, which you need to respond to: "${studentMessage}" 
-			| Check if the student made any mistakes in their message, gently correct them if needed.
+			|
 			Based on the chat history, if it seems like the student is just guessing answers, guide them to think more carefully about the question.
 			Please provide your answer as plain text only, do not use any markdown formatting characters like asterisks, # symbols, or dollar signs ($).
-			If they are asking whether a particular answer is correct, do NOT tell them if it is right or wrong.
-			Instead, guide them to evaluate their own answer. Even if they reach the correct answer, do not say 'you got it'
-			or 'correct', but instead encourage them to submit their answer for grading. Keep your response concise (max 50 words).`;
+			Keep your response CONCISE (MAX 50 WORDS).`;
 	const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
 	const ai = new GoogleGenAI({apiKey: apiKey});
 	
@@ -56,7 +56,7 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 			thinkingBudget: 0, // Disables thinking, uses too many tokens otherwise
 			},
 			systemInstruction: role,
-			maxOutputTokens: 150, // Limit response length
+			maxOutputTokens: 120, // Limit response length
 		},
 		contents: prompt
   	});
@@ -102,7 +102,7 @@ async function getMistake(questionId, givenAns, selfConfidence, chatHistory="", 
 	Chat History: ${chatHistory}
 	Here is the list of possible mistakes in (id) label: description format:
 	${mistakeList}
-	Respond with only the mistake ID that best describes the student's mistake.`;
+	Respond with ONLY the mistake ID that best describes the student's mistake. No other text, no paranthesis or anything.`;
 	const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
 	const ai = new GoogleGenAI({apiKey: apiKey});
 	const response = await ai.models.generateContent({
@@ -119,7 +119,7 @@ async function getMistake(questionId, givenAns, selfConfidence, chatHistory="", 
 	// Extract the mistakeId from the response
 	var mistakeId;
 	try{
-		mistakeId = parseInt(response.text.trim());
+		mistakeId = parseInt((response.text.trim().match(/\d+/g) ?? []).join(''));
 		if(isNaN(mistakeId)){
 			console.warn("Gemini returned non-numeric mistake ID:", response.text);
 			// Default to a generic mistake type if parsing fails

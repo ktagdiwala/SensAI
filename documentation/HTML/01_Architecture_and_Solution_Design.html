@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>01_Architecture_and_Solution_Design</title>
+	<style>
+		/* Basic styles for readability */
+		body {
+			font-family: sans-serif;
+			max-width: 800px;
+			margin: 2em auto;
+			padding: 0 1em;
+			line-height: 1.6;
+		}
+		img { max-width: 100%; height: auto; }
+		pre { background-color: #f4f4f4; padding: 1em; overflow-x: auto; }
+		code { font-family: monospace; }
+	</style>
+</head>
+<body>
+	<h1>SensAI: Architecture and Solution Design</h1>
+<h2>Table of Contents</h2>
+<ol>
+<li><a href="#system-overview">System Overview</a></li>
+<li><a href="#architecture-pattern">Architecture Pattern</a></li>
+<li><a href="#technology-stack">Technology Stack</a></li>
+<li><a href="#system-components">System Components</a></li>
+<li><a href="#data-flow">Data Flow</a></li>
+<li><a href="#database-schema">Database Schema</a></li>
+<li><a href="#api-design">API Design</a></li>
+<li><a href="#security-architecture">Security Architecture</a></li>
+<li><a href="#deployment-architecture">Deployment Architecture</a></li>
+</ol>
+<hr>
+<h2>System Overview</h2>
+<p><strong>SensAI</strong> is an intelligent tutoring system that leverages AI-powered chat assistance to guide students through quiz attempts. The platform enables instructors to create and manage quizzes while providing students with contextual AI guidance to improve their learning outcomes.</p>
+<h3>Key Features</h3>
+<ul>
+<li><strong>Student Quiz System</strong>: Answer multiple-choice questions with optional AI guidance</li>
+<li><strong>AI Chat Assistant</strong>: Context-aware tutoring powered by Google Gemini API</li>
+<li><strong>Mistake Identification</strong>: Automatic categorization of student errors</li>
+<li><strong>Analytics Dashboard</strong>: Comprehensive instructor insights into student performance</li>
+<li><strong>Session Management</strong>: Secure user authentication and session handling</li>
+<li><strong>Chat History</strong>: Persistent storage and retrieval of student-AI interactions</li>
+</ul>
+<hr>
+<h2>Architecture Pattern</h2>
+<p>SensAI follows a <strong>three-tier client-server architecture</strong> with clear separation of concerns:</p>
+<pre><code>┌─────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                    │
+│          (React + TypeScript + Tailwind CSS)            │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ Homepage │ Student Page │ Quiz Page │ Analytics  │  │
+│  └──────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+                           ↓ HTTP/REST
+┌─────────────────────────────────────────────────────────┐
+│                    APPLICATION LAYER                     │
+│              (Express.js + Node.js Backend)              │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ Auth Routes │ Quiz Routes │ Attempt Routes │ AI │  │
+│  │             │ Question Routes │ Analytics Routes   │  │
+│  └──────────────────────────────────────────────────┘  │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │  Middleware Layer (Sessions, Auth, CORS)         │  │
+│  └──────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+                           ↓ SQL
+┌─────────────────────────────────────────────────────────┐
+│                    DATA LAYER                            │
+│          (MySQL Database + Google Gemini API)           │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │ Users │ Quizzes │ Questions │ Attempts │ Sessions│  │
+│  └──────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+</code></pre>
+<h3>Design Principles</h3>
+<ul>
+<li><strong>Separation of Concerns</strong>: Each layer has distinct responsibilities</li>
+<li><strong>RESTful API</strong>: Standard HTTP methods for resource operations</li>
+<li><strong>Stateless Server</strong>: Sessions managed via secure cookies</li>
+<li><strong>Lazy Loading</strong>: Circular dependency prevention (e.g., geminiUtils import in attemptUtils)</li>
+</ul>
+<hr>
+<h2>Technology Stack</h2>
+<h3>Frontend</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Framework</strong></td>
+<td>React 18+</td>
+<td>UI library with hooks</td>
+</tr>
+<tr>
+<td><strong>Language</strong></td>
+<td>TypeScript</td>
+<td>Type-safe development</td>
+</tr>
+<tr>
+<td><strong>Styling</strong></td>
+<td>Tailwind CSS</td>
+<td>Utility-first CSS framework</td>
+</tr>
+<tr>
+<td><strong>Build Tool</strong></td>
+<td>Vite</td>
+<td>Fast bundling and HMR</td>
+</tr>
+<tr>
+<td><strong>Routing</strong></td>
+<td>React Router v6</td>
+<td>Client-side navigation</td>
+</tr>
+<tr>
+<td><strong>PDF Generation</strong></td>
+<td>jsPDF</td>
+<td>Chat history export</td>
+</tr>
+<tr>
+<td><strong>State Management</strong></td>
+<td>React Hooks (useState, useContext)</td>
+<td>Local state management</td>
+</tr>
+<tr>
+<td><strong>Testing</strong></td>
+<td>Vitest + Testing Library</td>
+<td>Unit and component tests</td>
+</tr>
+<tr>
+<td><strong>E2E Testing</strong></td>
+<td>Selenium WebDriver</td>
+<td>Browser automation testing</td>
+</tr>
+</tbody>
+</table>
+<h3>Backend</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Framework</strong></td>
+<td>Express.js</td>
+<td>HTTP server and routing</td>
+</tr>
+<tr>
+<td><strong>Runtime</strong></td>
+<td>Node.js</td>
+<td>JavaScript execution</td>
+</tr>
+<tr>
+<td><strong>Language</strong></td>
+<td>JavaScript (ES6+)</td>
+<td>Server-side logic</td>
+</tr>
+<tr>
+<td><strong>Database</strong></td>
+<td>MySQL</td>
+<td>Relational data storage</td>
+</tr>
+<tr>
+<td><strong>Connection Pool</strong></td>
+<td>mysql2/promise</td>
+<td>Async database queries</td>
+</tr>
+<tr>
+<td><strong>Authentication</strong></td>
+<td>bcrypt</td>
+<td>Password hashing</td>
+</tr>
+<tr>
+<td><strong>Encryption</strong></td>
+<td>crypto (AES-256-GCM)</td>
+<td>API key encryption</td>
+</tr>
+<tr>
+<td><strong>AI Integration</strong></td>
+<td>@google/generative-ai</td>
+<td>Gemini API client</td>
+</tr>
+<tr>
+<td><strong>Session Management</strong></td>
+<td>Custom (cookies)</td>
+<td>User session handling</td>
+</tr>
+<tr>
+<td><strong>Environment Config</strong></td>
+<td>dotenv</td>
+<td>Environment variables</td>
+</tr>
+<tr>
+<td><strong>Testing</strong></td>
+<td>Jest</td>
+<td>Unit test framework</td>
+</tr>
+</tbody>
+</table>
+<h3>External Services</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Purpose</th>
+<th>Integration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Google Gemini API</strong></td>
+<td>AI chat and mistake identification</td>
+<td><code>/api/ai/*</code> routes</td>
+</tr>
+<tr>
+<td><strong>MySQL Database</strong></td>
+<td>Data persistence</td>
+<td>Cloud or local instance</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>System Components</h2>
+<h3>1. Frontend Components Structure</h3>
+<h4>Pages (Routes)</h4>
+<ul>
+<li><strong><code>Homepage.tsx</code></strong>: Authentication entry point (Sign In/Sign Up modals)</li>
+<li><strong><code>StudentPage.tsx</code></strong>: Quiz selection and attempt history</li>
+<li><strong><code>QuizPage.tsx</code></strong>: Main quiz interface with chat and submissions</li>
+<li><strong><code>InstructorPage.tsx</code></strong>: Quiz management for instructors</li>
+<li><strong><code>QuizCreatePage.tsx</code></strong>: Quiz creation/editing interface</li>
+<li><strong><code>InstructorAnalyticsPage.tsx</code></strong>: Performance analytics dashboard</li>
+<li><strong><code>AccountPage.tsx</code></strong>: User profile management</li>
+</ul>
+<h4>Reusable Components</h4>
+<ul>
+<li><strong><code>ChatComponent.tsx</code></strong>: AI chat interface with message history</li>
+<li><strong><code>QuizCardComponent.tsx</code></strong>: Individual question display</li>
+<li><strong><code>SelfConfidence.tsx</code></strong>: Confidence rating widget (Low/Medium/High)</li>
+<li><strong><code>QuizSubmissionsInstructor.tsx</code></strong>: Attempt lookup and filtering</li>
+<li><strong><code>QuizSubmissions.tsx</code></strong>: Student submission history</li>
+<li><strong><code>SignInComponent.tsx</code></strong>: Login form</li>
+<li><strong><code>SignUpComponent.tsx</code></strong>: Registration form</li>
+<li><strong><code>nav.tsx</code></strong>: Navigation bar with role-based links</li>
+</ul>
+<h4>Utilities &amp; Context</h4>
+<ul>
+<li><strong><code>AuthContext.tsx</code></strong>: Global user state and authentication</li>
+<li><strong><code>useQuizQuestions.ts</code></strong>: Custom hook for fetching quiz questions</li>
+<li><strong><code>questionMapping.ts</code></strong>: Utility for mapping question data</li>
+</ul>
+<h3>2. Backend Route Structure</h3>
+<pre><code>Routes (Express Routers)
+├── authRoutes.js          # POST /login, POST /logout, POST /register
+├── quizRoutes.js          # GET/POST quizzes, quiz details, access verification
+├── questionRoutes.js      # GET/POST/PUT/DELETE questions
+├── attemptRoutes.js       # POST submit answer, GET attempt history, GET student list
+├── aiRoutes.js            # POST get chat response, POST get quiz summary
+├── chatRoutes.js          # POST save chat history
+├── analyticRoutes.js      # GET metrics, quiz stats, question insights
+├── userRoutes.js          # GET/PUT user profile, API key management
+└── testRoutes.js          # POST test database connection
+</code></pre>
+<h3>3. Backend Utilities</h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>dbConnection.js</code></strong></td>
+<td>MySQL pool initialization and connection management</td>
+</tr>
+<tr>
+<td><strong><code>sessionMiddleware.js</code></strong></td>
+<td>Session validation and role-based route protection</td>
+</tr>
+<tr>
+<td><strong><code>attemptUtils.js</code></strong></td>
+<td>Question attempt recording, answer checking, retrieval</td>
+</tr>
+<tr>
+<td><strong><code>geminiUtils.js</code></strong></td>
+<td>Gemini API integration (chat, mistake ID, summaries)</td>
+</tr>
+<tr>
+<td><strong><code>quizUtils.js</code></strong></td>
+<td>Quiz CRUD operations, access code generation</td>
+</tr>
+<tr>
+<td><strong><code>questionUtils.js</code></strong></td>
+<td>Question CRUD, option shuffling, quiz assignment</td>
+</tr>
+<tr>
+<td><strong><code>userUtils.js</code></strong></td>
+<td>Password hashing, API key encryption/decryption</td>
+</tr>
+<tr>
+<td><strong><code>analyticUtils.js</code></strong></td>
+<td>Platform metrics, quiz KPIs, question insights</td>
+</tr>
+<tr>
+<td><strong><code>sessionUtils.js</code></strong></td>
+<td>Session creation, validation, deletion</td>
+</tr>
+<tr>
+<td><strong><code>dbQueries.js</code></strong></td>
+<td>Reusable database queries (mistake types, correct answers)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>Data Flow</h2>
+<h3>1. Student Quiz Attempt Flow</h3>
+<pre><code>┌─────────────────────┐
+│  Student Page       │
+│  Enter Quiz ID +    │
+│  Password           │
+└──────────┬──────────┘
+           │ POST /api/quiz/:quizId/:accessCode
+           ↓
+┌─────────────────────┐
+│ Backend Validation  │
+│ Check access code   │
+└──────────┬──────────┘
+           │ JSON response: quiz details
+           ↓
+┌─────────────────────┐
+│ Quiz Page Loads     │
+│ Fetch questions     │
+│ GET /api/question/  │
+└──────────┬──────────┘
+           │
+           ↓
+┌─────────────────────┐
+│ Student Answers Q   │
+│ Opens Chat (opt)    │
+└──────────┬──────────┘
+           │ POST /api/attempt/submit
+           ↓
+┌──────────────────────────┐
+│ Backend Processing       │
+│ 1. Check answer          │
+│ 2. Store attempt record  │
+│ 3. Identify mistake (AI) │
+│ 4. Return feedback       │
+└──────────┬───────────────┘
+           │
+           ↓
+┌────────────────────┐
+│ Display Feedback   │
+│ Allow Chat/Submit  │
+└────────────────────┘
+</code></pre>
+<h3>2. AI Chat Flow</h3>
+<pre><code>┌──────────────────┐
+│ Student Message  │
+│ &quot;How do I...&quot;    │
+└────────┬─────────┘
+         │ POST /api/ai/chat
+         ↓
+┌──────────────────────────────────┐
+│ Backend                          │
+│ 1. Load question context         │
+│ 2. Load chat history             │
+│ 3. Call Gemini API with prompt   │
+└────────┬─────────────────────────┘
+         │ Stream response
+         ↓
+┌──────────────────┐
+│ Display AI Reply │
+│ in Chat Box      │
+└────────┬─────────┘
+         │
+         ↓
+┌──────────────────┐
+│ POST /api/chat   │
+│ Save to DB       │
+└──────────────────┘
+</code></pre>
+<h3>3. Quiz Submission Flow</h3>
+<pre><code>┌──────────────────────┐
+│ Click Submit Quiz    │
+│ Confirm dialog       │
+└────────┬─────────────┘
+         │ POST /api/attempt/submit (all answers)
+         ↓
+┌────────────────────────────────────┐
+│ Backend Batch Processing           │
+│ For each question:                 │
+│ 1. Record final attempt            │
+│ 2. Calculate score                 │
+│ 3. Identify mistakes for wrong ones│
+└────────┬───────────────────────────┘
+         │ JSON: results, summary
+         ↓
+┌──────────────────────┐
+│ Display Results      │
+│ Score breakdown      │
+│ Get AI summary       │
+└────────┬─────────────┘
+         │ POST /api/ai/summary
+         ↓
+┌──────────────────────┐
+│ Show Summary Text    │
+│ Performance feedback │
+└──────────────────────┘
+</code></pre>
+<hr>
+<h2>Database Schema</h2>
+<h3>Core Tables</h3>
+<h4><code>user</code></h4>
+<pre><code class="language-sql">CREATE TABLE user (
+  userId INT PRIMARY KEY AUTO_INCREMENT,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  passwordHash VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  roleId INT NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (roleId) REFERENCES role(roleId)
+);
+</code></pre>
+<h4><code>role</code></h4>
+<pre><code class="language-sql">CREATE TABLE role (
+  roleId INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(50) UNIQUE NOT NULL  -- 'Student', 'Instructor'
+);
+</code></pre>
+<h4><code>quiz</code></h4>
+<pre><code class="language-sql">CREATE TABLE quiz (
+  quizId INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL,
+  accessCode VARCHAR(255) UNIQUE NOT NULL,
+  prompt TEXT,  -- System instruction for AI
+  courseId INT NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (courseId) REFERENCES course(courseId)
+);
+</code></pre>
+<h4><code>course</code></h4>
+<pre><code class="language-sql">CREATE TABLE course (
+  courseId INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL,
+  instructorId INT NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (instructorId) REFERENCES user(userId)
+);
+</code></pre>
+<h4><code>question</code></h4>
+<pre><code class="language-sql">CREATE TABLE question (
+  questionId INT PRIMARY KEY AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL,
+  correctAns VARCHAR(500) NOT NULL,
+  otherAns TEXT,  -- JSON array of wrong answers
+  prompt TEXT,    -- Optional guidance
+  courseId INT NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (courseId) REFERENCES course(courseId)
+);
+</code></pre>
+<h4><code>quiz_questions</code></h4>
+<pre><code class="language-sql">CREATE TABLE quiz_questions (
+  quizId INT NOT NULL,
+  questionId INT NOT NULL,
+  PRIMARY KEY (quizId, questionId),
+  FOREIGN KEY (quizId) REFERENCES quiz(quizId),
+  FOREIGN KEY (questionId) REFERENCES question(questionId)
+);
+</code></pre>
+<h4><code>question_attempt</code></h4>
+<pre><code class="language-sql">CREATE TABLE question_attempt (
+  attemptId INT PRIMARY KEY AUTO_INCREMENT,
+  userId INT NOT NULL,
+  questionId INT NOT NULL,
+  quizId INT NOT NULL,
+  givenAns VARCHAR(500),
+  isCorrect BOOLEAN,
+  mistakeId INT,
+  numMsgs INT DEFAULT 0,
+  selfConfidence INT,  -- 0=Low, 1=Medium, 2=High
+  dateTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES user(userId),
+  FOREIGN KEY (questionId) REFERENCES question(questionId),
+  FOREIGN KEY (quizId) REFERENCES quiz(quizId),
+  FOREIGN KEY (mistakeId) REFERENCES mistake_type(mistakeId)
+);
+</code></pre>
+<h4><code>mistake_type</code></h4>
+<pre><code class="language-sql">CREATE TABLE mistake_type (
+  mistakeId INT PRIMARY KEY AUTO_INCREMENT,
+  label VARCHAR(100) NOT NULL,
+  description TEXT
+  -- Examples: 'Misunderstanding', 'Calculation Error', 'No Attempt', etc.
+);
+</code></pre>
+<h4><code>chat_history</code></h4>
+<pre><code class="language-sql">CREATE TABLE chat_history (
+  chatId INT PRIMARY KEY AUTO_INCREMENT,
+  userId INT NOT NULL,
+  quizId INT NOT NULL,
+  questionId INT NOT NULL,
+  messages LONGTEXT NOT NULL,  -- JSON array
+  lastUpdated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (userId) REFERENCES user(userId),
+  FOREIGN KEY (quizId) REFERENCES quiz(quizId),
+  FOREIGN KEY (questionId) REFERENCES question(questionId)
+);
+</code></pre>
+<h4><code>session</code></h4>
+<pre><code class="language-sql">CREATE TABLE session (
+  sessionId VARCHAR(255) PRIMARY KEY,
+  userId INT NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  expiresAt TIMESTAMP NOT NULL,
+  FOREIGN KEY (userId) REFERENCES user(userId)
+);
+</code></pre>
+<h4><code>user_api_key</code> (Optional - for per-user Gemini keys)</h4>
+<pre><code class="language-sql">CREATE TABLE user_api_key (
+  userId INT PRIMARY KEY,
+  encryptedApiKey TEXT NOT NULL,
+  FOREIGN KEY (userId) REFERENCES user(userId)
+);
+</code></pre>
+<h3>Relationships Diagram</h3>
+<pre><code>user ─────┐
+          ├──→ role
+          ├──→ course (as instructor)
+          ├──→ question_attempt
+          ├──→ session
+          └──→ chat_history
+
+course ───→ quiz
+        ├──→ question
+
+quiz ─────→ quiz_questions ───→ question
+
+question_attempt ───→ mistake_type
+</code></pre>
+<hr>
+<h2>API Design</h2>
+<h3>Authentication Endpoints</h3>
+<h4>POST <code>/api/register</code></h4>
+<p>Register a new user (student or instructor)</p>
+<pre><code>Request: { name, email, password, role }
+Response: { userId, message }
+</code></pre>
+<h4>POST <code>/api/login</code></h4>
+<p>User login with email and password</p>
+<pre><code>Request: { email, password, role }
+Response: { userId, userRole, redirectUrl }
+Cookie: sessionId
+</code></pre>
+<h4>POST <code>/api/logout</code></h4>
+<p>Invalidate user session</p>
+<pre><code>Response: { message }
+</code></pre>
+<h3>Quiz Endpoints</h3>
+<h4>GET <code>/api/quiz/:quizId/:accessCode</code></h4>
+<p>Retrieve quiz details and questions (student access)</p>
+<pre><code>Response: { 
+  quiz: { quizId, title, prompt },
+  questions: [{ questionId, title, options }]
+}
+</code></pre>
+<h4>GET <code>/api/quiz</code> (Instructor)</h4>
+<p>Retrieve all quizzes for instructor</p>
+<pre><code>Response: { quizzes: [...] }
+</code></pre>
+<h4>POST <code>/api/quiz</code></h4>
+<p>Create new quiz</p>
+<pre><code>Request: { title, prompt, courseId }
+Response: { quizId, accessCode }
+</code></pre>
+<h3>Attempt Endpoints</h3>
+<h4>POST <code>/api/attempt/submit</code></h4>
+<p>Submit a single question answer</p>
+<pre><code>Request: {
+  userId, questionId, quizId,
+  givenAns, selfConfidence,
+  numMsgs, hasCheckedAnswer
+}
+Response: { correct, explanation, mistakeType }
+</code></pre>
+<h4>POST <code>/api/attempt/submit-all</code></h4>
+<p>Submit all quiz answers at once</p>
+<pre><code>Request: {
+  quizId, userId, dateTime,
+  questionArray: [{ questionId, givenAns, numMsgs, ... }]
+}
+Response: { results, summary, quizSummary }
+</code></pre>
+<h4>GET <code>/api/attempt/student</code></h4>
+<p>Get all attempts by current student</p>
+<pre><code>Response: { attempts: [...] }
+</code></pre>
+<h4>GET <code>/api/attempt/quiz/:quizId</code></h4>
+<p>Get all attempts for a specific quiz (instructor)</p>
+<pre><code>Response: { attempts: [...] }
+</code></pre>
+<h3>AI Endpoints</h3>
+<h4>POST <code>/api/ai/chat</code></h4>
+<p>Get AI response for student message</p>
+<pre><code>Request: {
+  userId, studentMessage, quizId,
+  questionId, chatHistory
+}
+Response: { message: &quot;AI response text&quot; }
+</code></pre>
+<h4>POST <code>/api/ai/summary</code></h4>
+<p>Generate quiz performance summary</p>
+<pre><code>Request: { quizResult, userId }
+Response: { summary: &quot;Personalized feedback...&quot; }
+</code></pre>
+<h3>Analytics Endpoints</h3>
+<h4>GET <code>/api/analytic/metrics</code></h4>
+<p>Get platform-wide metrics (instructor)</p>
+<pre><code>Response: {
+  totals: { user_count, student_count, ... },
+  questionsByQuiz: [...],
+  totalAttempts: [...]
+}
+</code></pre>
+<h4>GET <code>/api/analytic/quiz/:quizId</code></h4>
+<p>Get KPIs for specific quiz</p>
+<pre><code>Response: {
+  totalAttempts, averageScore,
+  completionRate, avgAIMessages
+}
+</code></pre>
+<h4>GET <code>/api/analytic/question/:questionId</code></h4>
+<p>Get per-question insights</p>
+<pre><code>Response: {
+  title, percent_correct,
+  avg_msgs, mistakeBreakdown
+}
+</code></pre>
+<hr>
+<h2>Security Architecture</h2>
+<h3>1. Authentication &amp; Authorization</h3>
+<p><strong>Session-Based Authentication</strong></p>
+<ul>
+<li>Sessions stored in database with expiration</li>
+<li>Secure HTTP-only cookies (no JS access)</li>
+<li>Role-based access control (RBAC)</li>
+</ul>
+<p><strong>Password Security</strong></p>
+<ul>
+<li>bcrypt hashing with configurable salt rounds</li>
+<li>Minimum password complexity recommended</li>
+<li>No plaintext storage</li>
+</ul>
+<p><strong>Middleware Protection</strong></p>
+<pre><code class="language-javascript">// Verify session and role
+verifySession middleware → verifySessionStudent/verifySessionInstructor
+</code></pre>
+<h3>2. Data Encryption</h3>
+<p><strong>API Key Protection</strong></p>
+<ul>
+<li>User-provided Gemini API keys encrypted with AES-256-GCM</li>
+<li>Encryption key stored in environment variables</li>
+<li>Decrypted only when needed for API calls</li>
+</ul>
+<p><strong>Sensitive Data</strong></p>
+<ul>
+<li>No API keys logged or exposed in responses</li>
+<li>Database credentials in <code>.env</code> file (not committed)</li>
+</ul>
+<h3>3. API Security</h3>
+<p><strong>CORS Configuration</strong></p>
+<pre><code class="language-javascript">// Only allow frontend origin
+cors: { origin: process.env.FRONTEND_URL, credentials: true }
+</code></pre>
+<p><strong>Input Validation</strong></p>
+<ul>
+<li>Validate user inputs before database operations</li>
+<li>Prevent SQL injection via parameterized queries</li>
+<li>Trim and sanitize string inputs</li>
+</ul>
+<p><strong>Rate Limiting</strong> (Recommended)</p>
+<ul>
+<li>Implement for login attempts</li>
+<li>Limit API calls per user</li>
+<li>Protect against brute-force attacks</li>
+</ul>
+<h3>4. Database Security</h3>
+<p><strong>Parameterized Queries</strong></p>
+<pre><code class="language-javascript">const [rows] = await pool.query(sql, [userId, quizId]);
+// Prevents SQL injection
+</code></pre>
+<p><strong>Least Privilege</strong></p>
+<ul>
+<li>Database user with minimal required permissions</li>
+<li>Separate read/write credentials (optional)</li>
+</ul>
+<p><strong>Backup &amp; Recovery</strong></p>
+<ul>
+<li>Regular database backups</li>
+<li>Transaction support for data consistency</li>
+</ul>
+<hr>
+<h2>Deployment Architecture</h2>
+<h3>Development Environment</h3>
+<pre><code>Local Machine
+├── Frontend (Vite dev server on :5173)
+├── Backend (Node.js on :3001)
+└── Database (MySQL local or remote)
+</code></pre>
+<h3>Production Deployment (Recommended)</h3>
+<h4>Frontend Deployment</h4>
+<ul>
+<li><strong>Build</strong>: <code>npm run build</code> → static files in <code>dist/</code></li>
+<li><strong>Hosting</strong>:
+<ul>
+<li>Netlify / Vercel (recommended for React)</li>
+<li>AWS S3 + CloudFront</li>
+<li>Docker container</li>
+</ul>
+</li>
+<li><strong>Environment</strong>: Production API URL in <code>.env.production</code></li>
+</ul>
+<h4>Backend Deployment</h4>
+<ul>
+<li><strong>Host</strong>:
+<ul>
+<li>Heroku</li>
+<li>AWS EC2 / ECS</li>
+<li>DigitalOcean</li>
+<li>Docker container</li>
+</ul>
+</li>
+<li><strong>Process Manager</strong>: PM2 or systemd</li>
+<li><strong>Environment Variables</strong>: <code>.env</code> with production secrets</li>
+<li><strong>Reverse Proxy</strong>: Nginx or Apache for SSL/TLS</li>
+</ul>
+<h4>Database</h4>
+<ul>
+<li><strong>MySQL Hosting</strong>:
+<ul>
+<li>AWS RDS MySQL</li>
+<li>DigitalOcean Managed MySQL</li>
+<li>Self-hosted with backups</li>
+</ul>
+</li>
+<li><strong>Connection</strong>: Secure credentials, SSL/TLS for remote connections</li>
+</ul>
+<h4>External Services</h4>
+<ul>
+<li><strong>Google Gemini API</strong>
+<ul>
+<li>API key stored securely in backend environment</li>
+<li>Rate limiting per quota</li>
+<li>Fallback strategies for failures</li>
+</ul>
+</li>
+</ul>
+<h3>Deployment Checklist</h3>
+<ul>
+<li>[ ] Environment variables configured</li>
+<li>[ ] Database migrations applied</li>
+<li>[ ] HTTPS/SSL enabled</li>
+<li>[ ] CORS properly configured</li>
+<li>[ ] Session secret randomized</li>
+<li>[ ] Encryption key generated and stored</li>
+<li>[ ] Logging configured</li>
+<li>[ ] Error handling and monitoring setup</li>
+<li>[ ] Database backups automated</li>
+<li>[ ] CI/CD pipeline (GitHub Actions recommended)</li>
+</ul>
+<h3>Monitoring &amp; Logging</h3>
+<ul>
+<li><strong>Backend Logs</strong>: Console output, file logging (optional)</li>
+<li><strong>Error Tracking</strong>: Sentry or similar service</li>
+<li><strong>Performance Monitoring</strong>: New Relic or DataDog</li>
+<li><strong>Uptime Monitoring</strong>: Pingdom or UptimeRobot</li>
+</ul>
+<hr>
+<h2>Summary</h2>
+<p>SensAI follows a modern, scalable three-tier architecture that separates concerns between the presentation, application, and data layers. The design prioritizes:</p>
+<p>✅ <strong>User Experience</strong>: Real-time AI assistance and intuitive UI<br>
+✅ <strong>Security</strong>: Session-based auth, encrypted keys, parameterized queries<br>
+✅ <strong>Scalability</strong>: RESTful APIs, database connection pooling<br>
+✅ <strong>Maintainability</strong>: Modular code organization, clear separation of concerns<br>
+✅ <strong>Extensibility</strong>: Easy to add features (new routes, utilities, components)</p>
+<p>The platform is production-ready with proper error handling, validation, and role-based access control.</p>
+
+</body>
+</html>

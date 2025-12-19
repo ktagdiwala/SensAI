@@ -160,20 +160,49 @@ describe('Student E2E: Signup → Login → Quiz → Submit → Verify', functio
     // Wait for quiz page to load
     await driver.wait(until.urlContains('/quiz'), 15000);
 
-    // STEP 4: Answer questions (click first radio for each question)
-    const numQuestions = await driver.executeScript(() => {
+    // STEP 4: Wait for questions to load, then answer them + select confidence
+    const numQuestions = await driver.wait(async () => {
+      try {
+        const count = await driver.executeScript(() => {
+          const radios = Array.from(document.querySelectorAll('input[type="radio"]'));
+          const names = [...new Set(radios.map(r => r.name).filter(Boolean))];
+          // Filter to only question radios (exclude confidence radios)
+          const questionNames = names.filter(n => !n.includes('self-confidence'));
+          return questionNames.length;
+        });
+        return count > 0 ? count : null;
+      } catch {
+        return null;
+      }
+    }, 15000);
+    
+    console.log(`Found ${numQuestions} question(s) in the quiz`);
+
+    // Answer each question and select confidence level
+    await driver.executeScript(() => {
       const radios = Array.from(document.querySelectorAll('input[type="radio"]'));
-      const names = [...new Set(radios.map(r => r.name).filter(Boolean))];
-      names.forEach((n) => {
-        const r = radios.find(x => x.name === n && !x.disabled);
-        if (r) r.click();
+      const allNames = [...new Set(radios.map(r => r.name).filter(Boolean))];
+      // Filter to only question radios (not confidence)
+      const questionNames = allNames.filter(n => !n.includes('self-confidence'));
+      
+      questionNames.forEach((questionName) => {
+        // Answer the question by clicking first radio
+        const answerRadio = radios.find(x => x.name === questionName && !x.disabled);
+        if (answerRadio) answerRadio.click();
+        
+        // Select confidence level for this specific question
+        const confidenceName = `self-confidence-${questionName}`;
+        const confidenceRadios = radios.filter(x => x.name === confidenceName && !x.disabled);
+        if (confidenceRadios.length > 0) {
+          // Click second option (Somewhat confident)
+          confidenceRadios[1]?.click();
+        }
       });
-      return names.length; // return count of questions
     });
-    console.log(`Found and answered ${numQuestions} question(s) in the quiz`);
+    console.log(`Answered ${numQuestions} question(s) and selected confidence levels`);
 
     // STEP 5: Submit quiz
-    const submitQuiz = await driver.findElement(By.xpath("//button[normalize-space(text())='Submit Quiz']"));
+    const submitQuiz = await driver.wait(until.elementLocated(By.xpath("//button[normalize-space(text())='Submit Quiz']")), 10000);
     await submitQuiz.click();
 
     // Handle confirm dialog

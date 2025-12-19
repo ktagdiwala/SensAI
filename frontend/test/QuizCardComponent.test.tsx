@@ -71,6 +71,7 @@ describe("QuestionCard Component (Student View)", () => {
         data={mockQuestionData}
         validate={mockValidate}
         studentId="student123"
+        selfConfidence={1}
       />,
     );
 
@@ -102,6 +103,7 @@ describe("QuestionCard Component (Student View)", () => {
         data={mockQuestionData}
         validate={mockValidate}
         studentId="student123"
+        selfConfidence={1}
       />,
     );
 
@@ -132,6 +134,7 @@ describe("QuestionCard Component (Student View)", () => {
         validate={mockValidate}
         studentId="student123"
         lockAfterSubmit={true}
+        selfConfidence={1}
       />,
     );
 
@@ -163,6 +166,7 @@ describe("QuestionCard Component (Student View)", () => {
         validate={mockValidate}
         studentId="student123"
         lockAfterSubmit={false}
+        selfConfidence={1}
       />,
     );
 
@@ -206,6 +210,7 @@ describe("QuestionCard Component (Student View)", () => {
         data={mockQuestionData}
         validate={mockValidate}
         studentId="student456"
+        selfConfidence={1}
       />,
     );
 
@@ -244,6 +249,7 @@ describe("QuestionCard Component (Student View)", () => {
         data={mockQuestionData}
         validate={mockValidate}
         studentId="student123"
+        selfConfidence={1}
       />,
     );
 
@@ -253,10 +259,16 @@ describe("QuestionCard Component (Student View)", () => {
     const submitButton = screen.getByRole("button", { name: /check|submit|answer/i });
     await user.click(submitButton);
 
-    expect(submitButton).toBeDisabled();
-
+    // Button should show "Checking…" and be disabled while validation is pending
     await waitFor(() => {
-      expect(submitButton).not.toBeDisabled();
+      expect(submitButton).toHaveTextContent("Checking…");
+      expect(submitButton).toBeDisabled();
+    });
+
+    // After validation completes, button remains disabled (because answer is checked)
+    // and "Reset Question" button appears
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /reset|question/i })).toBeInTheDocument();
     });
   });
 
@@ -271,6 +283,7 @@ describe("QuestionCard Component (Student View)", () => {
         validate={mockValidate}
         studentId="student123"
         onSelect={mockOnSelect}
+        selfConfidence={1}
       />,
     );
 
