@@ -8,6 +8,7 @@ const { getUserApiKey } = require('./userUtils');
 
 // The client gets the API key from the environment variable `GEMINI_API_KEY`.
 const apiKeyFromEnv = process.env.GEMINI_API_KEY || null;
+const gemini_model = "gemini-2.5-flash";
 
 // This will be made more efficient later using caching https://ai.google.dev/gemini-api/docs/caching?lang=node
 /* You can view usage and rate limits for your current API key by going to 
@@ -50,7 +51,7 @@ async function getChatResponse(userId, studentMessage, quizId, questionId, chatH
 	const ai = new GoogleGenAI({apiKey: apiKey});
 	
   	const response = await ai.models.generateContent({
-		model: "gemini-2.5-flash",
+		model: gemini_model,
 		config: {
 			thinkingConfig: {
 			thinkingBudget: 0, // Disables thinking, uses too many tokens otherwise
@@ -106,7 +107,7 @@ async function getMistake(questionId, givenAns, selfConfidence, chatHistory="", 
 	const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
 	const ai = new GoogleGenAI({apiKey: apiKey});
 	const response = await ai.models.generateContent({
-		model: "gemini-2.5-flash",
+		model: gemini_model,
 		config: {
 			thinkingConfig: {
 			thinkingBudget: 0, // Disables thinking, uses too many tokens otherwise
@@ -167,7 +168,7 @@ async function getQuizSummary(quizResult, userId){
 	const apiKey = await getUserApiKey(userId) || apiKeyFromEnv;
 	const ai = new GoogleGenAI({apiKey: apiKey});
 	const response = await ai.models.generateContent({
-		model: "gemini-2.5-flash",
+		model: gemini_model,
 		config: {
 			thinkingConfig: {
 			thinkingBudget: 0, // Disables thinking, uses too many tokens otherwise
@@ -231,7 +232,7 @@ async function getAnswerFeedback(userId, questionId, givenAns, selfConfidence, c
 		const ai = new GoogleGenAI({apiKey: apiKey});
 		
 		const response = await ai.models.generateContent({
-			model: "gemini-2.5-flash",
+			model: gemini_model,
 			config: {
 				thinkingConfig: {
 					thinkingBudget: 0,
