@@ -1,11 +1,7 @@
 /backend/node_modules
 /frontend/node_modules
 .env
-SensAI_Insert_Statements.sql
 testEndpoints.js
 /backend/test/attemptRoutes.test.js
-schema.png
 sensaiAttempts.csv
 attemptsVisualization.py
-powerbi_visualizations.pbix
-question_attempts.sql
