@@ -1,5 +1,7 @@
 # SensAI
-https://github.com/ktagdiwala/SensAI
+GitHub Repository: https://github.com/ktagdiwala/SensAI
+
+Presentation Video: https://youtu.be/SP-0ve3utJ0
 
 ## Project Overview
 
